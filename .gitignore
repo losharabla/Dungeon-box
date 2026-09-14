@@ -1,0 +1,34 @@
+# Development scratch files.
+# Probes, frame dumpers, PNG/string diff helpers and stale copies of real tools
+# were being written to the repo root and to tools/ during development. They are
+# never needed to play the game or to run a test suite.
+.tmp-*
+
+# Generated images from the offline renderers.
+# tools/render-frame.mjs writes tools/frame.png (that is `npm run preview`) and
+# every debug screenshot uses the frame* prefix; tools/render-alignment.mjs
+# writes tools/hud-alignment.svg.
+tools/frame*.png
+tools/hud-alignment.svg
+
+# Node. Nothing depends on it today (the game has zero dependencies), but
+# `npm install` will create it.
+node_modules/
+npm-debug.log*
+
+# Logs. No .log file is committed; this is cheap insurance.
+*.log
+
+# OS and editor junk.
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+*.swp
+.idea/
+.vscode/
+
+# Temporary files and coverage output.
+*.tmp
+coverage/
+.nyc_output/

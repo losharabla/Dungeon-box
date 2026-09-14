@@ -1,0 +1,15 @@
+# Line endings.
+#
+# The repository stores text as LF, and a Windows checkout gets CRLF for the
+# things Windows tooling actually reads: batch files. ЗАПУСТИТЬ.bat contains
+# parenthesised `if (...)` blocks, and cmd.exe parses those more reliably with
+# CRLF.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.txt text eol=crlf
+
+# Binary assets. The game ships none, but the offline renderer writes PNGs.
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary

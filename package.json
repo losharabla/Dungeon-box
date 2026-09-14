@@ -1,0 +1,36 @@
+{
+  "name": "roguelike-prototype",
+  "version": "1.0.0",
+  "private": true,
+  "description": "2D roguelike prototype on HTML5 Canvas + vanilla ES modules, with no build step and no external assets.",
+  "type": "module",
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "test": "node tools/smoke-test.mjs && node tools/dom-test.mjs && node tools/align-test.mjs && node tools/camera-test.mjs && node tools/graphics-test.mjs && node tools/balance-test.mjs && node tools/parry-regression.mjs && node tools/input-regression.mjs && node tools/ui-cache-regression.mjs && node tools/frame-cost.mjs",
+    "test:unit": "node tools/smoke-test.mjs",
+    "test:dom": "node tools/dom-test.mjs",
+    "test:align": "node tools/align-test.mjs",
+    "test:camera": "node tools/camera-test.mjs",
+    "test:graphics": "node tools/graphics-test.mjs",
+    "test:balance": "node tools/balance-test.mjs",
+    "test:hitboxes": "node tools/hitbox-audit.mjs",
+    "test:survivability": "node tools/survivability-test.mjs",
+    "test:soak": "node tools/soak-test.mjs",
+    "test:arenas": "node tools/verify-arenas.mjs",
+    "test:runs": "node tools/simulate-run.mjs 9 2400",
+    "test:campaign": "node tools/simulate-floors.mjs",
+    "test:all": "npm run test && npm run test:hitboxes && npm run test:survivability && npm run test:soak && npm run test:arenas && npm run test:campaign",
+    "preview": "node tools/render-frame.mjs tools/frame.png warrior whirlwind arena"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "roguelike",
+    "canvas",
+    "game",
+    "vanilla-js",
+    "es-modules"
+  ],
+  "license": "MIT"
+}

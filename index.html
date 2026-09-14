@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roguelike Prototype</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ============ MAIN MENU ============ -->
+  <section class="screen" data-screen="menu">
+    <div class="panel">
+      <h1 class="title">ROGUE<span>LIKE</span></h1>
+      <p class="subtitle">dark fantasy prototype</p>
+      <div class="menu-buttons">
+        <button class="btn btn-primary" data-action="goto" data-target="character_select">Начать забег</button>
+        <button class="btn" data-action="show-help">Управление</button>
+      </div>
+      <div class="help-block" hidden>
+        <p><b>W A S D</b> — движение</p>
+        <p><b>Мышь</b> — прицел</p>
+        <p><b>ЛКМ</b> — атака</p>
+        <p><b>Q</b> — ульта</p>
+        <p><b>E</b> — взаимодействие (двери, магазин, алтарь)</p>
+        <p><b>ESC</b> — пауза</p>
+        <p><b>Пробел</b> — рывок</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CHARACTER SELECT ============ -->
+  <section class="screen" data-screen="character_select" hidden>
+    <div class="panel panel-wide">
+      <h2 class="screen-title">Выбор класса</h2>
+
+      <div class="class-grid" id="class-grid"></div>
+
+      <div class="ult-select">
+        <h3>Ультимейт</h3>
+        <div class="ult-list" id="ult-list"></div>
+      </div>
+
+      <div class="menu-buttons">
+        <button class="btn btn-primary" data-action="start-run">В подземелье</button>
+        <button class="btn" data-action="goto" data-target="menu">Назад</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GAME ============ -->
+  <section class="screen screen-game" data-screen="playing" hidden>
+    <canvas id="game-canvas"></canvas>
+
+    <!-- HUD overlay: pure CSS/DOM per design doc section 31 -->
+    <div class="hud" id="hud">
+      <div class="hud-top">
+        <div class="hud-hp">
+          <div class="hud-label">HP</div>
+          <div class="bar bar-hp"><div class="bar-fill" id="hud-hp-fill"></div></div>
+          <div class="hud-num" id="hud-hp-text">0 / 0</div>
+        </div>
+        <div class="hud-gold">
+          <span class="coin"></span>
+          <span id="hud-gold-text">0</span>
+        </div>
+      </div>
+
+      <div class="hud-rooms" id="hud-rooms"></div>
+
+      <div class="hud-hint" id="hud-hint" hidden></div>
+
+      <div class="hud-bottom">
+        <div class="hud-weapon">
+          <div class="hud-label">Оружие</div>
+          <div class="hud-weapon-name" id="hud-weapon-name">—</div>
+        </div>
+        <div class="hud-dash">
+          <div class="hud-ult-head">
+            <span class="hud-label" id="hud-dash-name">Рывок</span>
+            <span class="key" id="hud-dash-key">Space</span>
+          </div>
+          <div class="bar bar-dash"><div class="bar-fill" id="hud-dash-fill"></div></div>
+        </div>
+        <div class="hud-ult">
+          <div class="hud-ult-head">
+            <span class="hud-label" id="hud-ult-name">Ульта</span>
+            <span class="key" id="hud-ult-key">Q</span>
+          </div>
+          <div class="bar bar-ult"><div class="bar-fill" id="hud-ult-fill"></div></div>
+        </div>
+      </div>
+
+      <div class="boss-bar" id="boss-bar" hidden>
+        <div class="boss-name" id="boss-name"></div>
+        <div class="bar bar-boss"><div class="bar-fill" id="boss-fill"></div></div>
+      </div>
+    </div>
+
+    <!-- Shop -->
+    <div class="overlay" id="overlay-shop" hidden>
+      <div class="panel panel-wide">
+        <h2 class="screen-title">Лавка торговца</h2>
+        <p class="subtitle">Золото: <b id="shop-gold">0</b></p>
+        <div class="shop-grid" id="shop-grid"></div>
+        <div class="menu-buttons">
+          <button class="btn btn-primary" data-action="shop-leave">Покинуть лавку</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Healing -->
+    <div class="overlay" id="overlay-healing" hidden>
+      <div class="panel">
+        <h2 class="screen-title">Алтарь восстановления</h2>
+        <p class="subtitle" id="healing-text">Вы восстанавливаете силы.</p>
+        <div class="menu-buttons">
+          <button class="btn btn-primary" data-action="healing-leave">Продолжить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reward -->
+    <div class="overlay" id="overlay-reward" hidden>
+      <div class="panel">
+        <h2 class="screen-title">Награда</h2>
+        <div class="reward-grid" id="reward-grid"></div>
+        <div class="menu-buttons">
+          <button class="btn btn-primary" data-action="reward-take">Забрать</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pause -->
+    <div class="overlay" id="overlay-pause" hidden>
+      <div class="panel">
+        <h2 class="screen-title">Пауза</h2>
+        <div class="menu-buttons">
+          <button class="btn btn-primary" data-action="resume">Продолжить</button>
+          <button class="btn" data-action="abandon-run">Покинуть забег</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Transition -->
+    <div class="overlay overlay-flat" id="overlay-transition" hidden>
+      <div class="transition-text" id="transition-text"></div>
+    </div>
+  </section>
+
+  <!-- ============ GAME OVER ============ -->
+  <section class="screen" data-screen="game_over" hidden>
+    <div class="panel">
+      <h1 class="title title-dead">ВЫ ПОГИБЛИ</h1>
+      <p class="subtitle">Забег окончен</p>
+      <div class="stats" id="stats-gameover"></div>
+      <div class="menu-buttons">
+        <button class="btn btn-primary" data-action="restart">Новый забег</button>
+        <button class="btn" data-action="goto" data-target="menu">В меню</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ VICTORY ============ -->
+  <section class="screen" data-screen="victory" hidden>
+    <div class="panel">
+      <h1 class="title title-win">ПОБЕДА</h1>
+      <p class="subtitle" id="victory-sub">Executioner повержен</p>
+      <div class="stats" id="stats-victory"></div>
+      <div class="menu-buttons">
+        <button class="btn btn-primary" id="btn-next-floor" data-action="next-floor">Следующий этаж</button>
+        <button class="btn" data-action="restart">Новый забег</button>
+        <button class="btn" data-action="goto" data-target="menu">В меню</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="error-box" id="error-box" hidden></div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

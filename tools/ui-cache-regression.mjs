@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import { UIManager } from '../src/ui/UIManager.js';
+import { Player } from '../src/entities/Player.js';
+// Run the real method with small DOM leaves; no copy of its cache logic.
+const node = () => ({style:{},classList:{toggle(){}},hidden:true});
+const ui = Object.create(UIManager.prototype);
+ui._cache = {};
+ui.el = Object.fromEntries(['hpFill','hpText','goldText','shopGold','ultFill','dashFill','weaponName','bossBar'].map(k=>[k,node()]));
+let writes = 0;
+ui.el.ultName = {set textContent(v){writes++;this.value=v;}};
+const player = new Player({classId:'warrior',x:0,y:0,ultimateId:'whirlwind'});
+const run = {plan:null}; const rooms={registry:{enemies:[]}};
+for(let i=0;i<100;i++) ui.updateHud(player,run,rooms);
+assert.equal(writes,1);
+player.ultCharge=100;
+ui.updateHud(player,run,rooms);
+assert.equal(writes,2);
+assert.match(ui.el.ultName.value,/ГОТОВО/);
+ui.updateHud(player,run,rooms);
+assert.equal(writes,2);
+console.log('2/2 real HUD cache checks passed');

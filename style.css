@@ -1,0 +1,540 @@
+/* ============================================================
+   Roguelike Prototype — UI stylesheet
+   The game world is Canvas. Everything here is the surrounding
+   interface: menus, HUD, shop, overlays. (design doc §2, §31)
+   ============================================================ */
+
+:root {
+  --bg-deep:      #07070c;
+  --bg-panel:     #12121c;
+  --bg-panel-2:   #1a1a28;
+  --edge:         #2e2e42;
+  --edge-bright:  #4a4a68;
+  --ink:          #e8e6f0;
+  --ink-dim:      #9a97ad;
+  --gold:         #e8b955;
+  --hp:           #d4384a;
+  --hp-dark:      #6b1a25;
+  --ult:          #49b8e8;
+  --accent:       #c8452f;
+  --accent-glow:  #ff6a3d;
+  --font: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-deep);
+  color: var(--ink);
+  font-family: var(--font);
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app { position: relative; width: 100%; height: 100%; }
+
+/* ---------------- Screens ---------------- */
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background:
+    radial-gradient(ellipse at 50% 0%,   rgba(120, 40, 30, .28), transparent 60%),
+    radial-gradient(ellipse at 50% 100%, rgba(30, 40, 90, .22), transparent 60%),
+    var(--bg-deep);
+}
+.screen[hidden] { display: none; }
+
+/* G4 screen transitions: the section remains contract-compatible while its
+   panel and backdrop settle in with a short entrance. */
+.screen-enter { animation: screenFadeIn .34s cubic-bezier(.2, .7, .2, 1) both; }
+.screen-enter .panel { animation: panelRiseIn .42s cubic-bezier(.2, .75, .25, 1) both; }
+.screen-game-over .panel { animation-delay: .08s; }
+.screen-victory .panel { animation-delay: .12s; }
+@keyframes screenFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes panelRiseIn { from { opacity: 0; transform: translateY(16px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+.screen-game { padding: 0; background: #000; }
+
+#game-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: crosshair;
+  image-rendering: auto;
+}
+
+/* ---------------- Panels ---------------- */
+
+.panel {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 32px 36px;
+  background: linear-gradient(160deg, var(--bg-panel-2), var(--bg-panel));
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .7), inset 0 1px 0 rgba(255, 255, 255, .05);
+  text-align: center;
+}
+.panel-wide { width: min(880px, 100%); }
+
+.title {
+  font-size: 54px;
+  letter-spacing: 8px;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 0 28px rgba(200, 69, 47, .55);
+  margin-bottom: 6px;
+}
+.title span { color: var(--accent-glow); }
+.title-dead { color: var(--hp); font-size: 42px; text-shadow: 0 0 30px rgba(212, 56, 74, .6); }
+.title-win  { color: var(--gold); font-size: 44px; text-shadow: 0 0 34px rgba(232, 185, 85, .6); }
+
+.screen-title {
+  font-size: 26px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+
+.subtitle { color: var(--ink-dim); font-size: 14px; letter-spacing: 2px; margin-bottom: 22px; }
+.subtitle b { color: var(--gold); }
+
+/* ---------------- Buttons ---------------- */
+
+.menu-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+.btn {
+  font-family: var(--font);
+  font-size: 15px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: linear-gradient(180deg, #23233a, #17172a);
+  border: 1px solid var(--edge-bright);
+  border-radius: 6px;
+  padding: 12px 26px;
+  cursor: pointer;
+  transition: transform .1s, border-color .15s, box-shadow .15s, color .15s;
+}
+.btn:hover  { border-color: var(--accent-glow); color: #fff; box-shadow: 0 0 18px rgba(255, 106, 61, .28); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: .38; cursor: not-allowed; box-shadow: none; border-color: var(--edge); }
+/* The victory screen hides the "next floor" button on the last floor; the
+   flex row must collapse around it, which a bare `hidden` does not guarantee
+   once any rule above ever sets `display` on `.btn`. */
+.btn[hidden] { display: none; }
+
+.btn-primary {
+  background: linear-gradient(180deg, #b8402c, #7d2418);
+  border-color: #e8674a;
+  color: #fff;
+  font-weight: 700;
+}
+.btn-primary:hover { box-shadow: 0 0 24px rgba(255, 106, 61, .5); }
+
+.key {
+  display: inline-block;
+  min-width: 22px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--ink);
+  background: #2a2a3e;
+  border: 1px solid var(--edge-bright);
+  border-radius: 4px;
+}
+
+.help-block {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--edge);
+  color: var(--ink-dim);
+  font-size: 13px;
+  line-height: 2;
+  text-align: left;
+}
+.help-block b { color: var(--ink); }
+.help-block[hidden] { display: none; }
+
+/* ---------------- Character select ---------------- */
+
+.class-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.class-card {
+  position: relative;
+  padding: 14px 12px;
+  background: linear-gradient(180deg, #1c1c2c, #131320);
+  border: 2px solid var(--edge);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color .15s, transform .12s, box-shadow .15s;
+}
+.class-card:hover { transform: translateY(-4px); border-color: var(--edge-bright); box-shadow: 0 10px 24px rgba(0, 0, 0, .3); }
+.class-card:hover canvas { transform: translateY(-2px) scale(1.04); filter: drop-shadow(0 0 10px rgba(255, 106, 61, .25)); }
+.class-card canvas { transition: transform .2s ease, filter .2s ease; }
+.class-card.selected {
+  border-color: var(--accent-glow);
+  box-shadow: 0 0 26px rgba(255, 106, 61, .3), inset 0 0 30px rgba(255, 106, 61, .08);
+}
+
+.class-card canvas { display: block; margin: 0 auto 8px; }
+.class-card .cc-name { font-size: 16px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+.class-card .cc-role { font-size: 11px; color: var(--ink-dim); letter-spacing: 1px; margin-bottom: 8px; }
+.class-card .cc-stats { font-size: 12px; color: var(--ink-dim); line-height: 1.7; text-align: left; padding: 0 6px; }
+.class-card .cc-stats span { color: var(--ink); float: right; }
+.class-card .cc-desc { font-size: 11px; color: #7d7a90; margin-top: 8px; line-height: 1.5; }
+
+.ult-select { margin-top: 6px; text-align: left; }
+.ult-select h3 {
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: 10px;
+}
+.ult-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+.ult-card {
+  padding: 10px 12px;
+  background: #14141f;
+  border: 2px solid var(--edge);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.ult-card:hover { border-color: var(--edge-bright); }
+.ult-card.selected { border-color: var(--ult); background: rgba(73, 184, 232, .09); }
+.ult-card .uc-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.ult-card .uc-desc { font-size: 11px; color: var(--ink-dim); line-height: 1.5; }
+
+/* ---------------- HUD ----------------
+
+   The canvas letterboxes a fixed 1280x720 logical view into the window, so
+   at non-16:9 aspect ratios the world is a centred band with bars on the
+   sides. The HUD must sit inside that band, not across the whole window,
+   or its centre and corners drift away from what they label.
+
+   `--view-*` variables are written by RenderSystem.resize() to describe the
+   band in CSS pixels; the fallbacks keep the old full-window behaviour
+   before the first resize runs. */
+
+.hud {
+  position: absolute;
+  top: var(--view-top, 0);
+  left: var(--view-left, 0);
+  width: var(--view-width, 100%);
+  height: var(--view-height, 100%);
+  pointer-events: none;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  /* The HUD rows hug the top and the bottom group is pushed down by its own
+     `margin-top: auto`. This must NOT be `space-between`: the room strip is
+     the second child, so distributing the free space parked it in the exact
+     vertical centre of the screen instead of under the top row. */
+  justify-content: flex-start;
+  box-sizing: border-box;
+}
+.hud[hidden] { display: none; }
+
+.hud-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+
+.hud-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.hud-hp { min-width: 260px; }
+.hud-hp .hud-label { margin-bottom: 4px; }
+
+.bar {
+  position: relative;
+  height: 16px;
+  background: #171722;
+  border: 1px solid var(--edge-bright);
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, .8);
+}
+.bar-fill {
+  height: 100%;
+  width: 100%;
+  transition: width .16s ease-out;
+}
+.bar-hp .bar-fill {
+  background: linear-gradient(180deg, #ff5f6d, var(--hp) 45%, var(--hp-dark));
+  box-shadow: 0 0 14px rgba(212, 56, 74, .6);
+}
+.bar-ult .bar-fill {
+  background: linear-gradient(180deg, #8fe3ff, var(--ult) 50%, #1f6a8c);
+  box-shadow: 0 0 14px rgba(73, 184, 232, .6);
+}
+/* Dash charge: dim while recharging, bright once the burst is available. */
+.bar-dash .bar-fill {
+  background: linear-gradient(180deg, #b8c4d8, #6f7d94 50%, #3b4453);
+  box-shadow: none;
+}
+.bar-dash .bar-fill.ready {
+  background: linear-gradient(180deg, #eafff2, #7fe0a8 50%, #2f7d52);
+  box-shadow: 0 0 14px rgba(127, 224, 168, .6);
+}
+.bar-boss { height: 22px; }
+.bar-boss .bar-fill {
+  background: linear-gradient(180deg, #ffb36b, #c8452f 50%, #5e1810);
+  box-shadow: 0 0 18px rgba(200, 69, 47, .7);
+}
+
+.hud-num { font-size: 12px; color: var(--ink); margin-top: 3px; letter-spacing: 1px; }
+
+.hud-gold {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--gold);
+  text-shadow: 0 0 14px rgba(232, 185, 85, .5);
+}
+.coin {
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffe9a8, var(--gold) 55%, #8a6218);
+  box-shadow: 0 0 10px rgba(232, 185, 85, .7);
+}
+
+.hud-rooms {
+  align-self: center;
+  margin-top: 12px;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  padding: 7px 14px;
+  background: rgba(10, 10, 18, .72);
+  border: 1px solid var(--edge);
+  border-radius: 20px;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: var(--ink-dim);
+}
+/* The floor panel shows progress along the straight path to the boss, not a
+   list of rooms: the floor is dealt one step at a time, so there is no map to
+   draw and no room to name. */
+.hud-rooms .step {
+  color: var(--ink);
+  letter-spacing: 1px;
+}
+
+.hud-hint {
+  /* Taken out of the flex flow and pinned just above the bottom row: as a
+     flow child it would either sit mid-screen or push the weapon/ult row
+     around whenever it appeared. */
+  position: absolute;
+  left: 50%;
+  bottom: 82px;
+  transform: translateX(-50%);
+  padding: 9px 20px;
+  background: rgba(10, 10, 18, .84);
+  border: 1px solid var(--edge-bright);
+  border-radius: 6px;
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--ink);
+  animation: hintPulse 1.6s ease-in-out infinite;
+}
+.hud-hint[hidden] { display: none; }
+@keyframes hintPulse { 0%, 100% { opacity: .68; } 50% { opacity: 1; } }
+
+/* Pushed to the bottom of the column by consuming the leftover space. */
+.hud-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  margin-top: auto;
+}
+
+.hud-weapon-name {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--ink);
+}
+.hud-weapon-name.legendary {
+  color: var(--gold);
+  text-shadow: 0 0 18px rgba(232, 185, 85, .65);
+}
+
+.hud-ult { width: 300px; }
+.hud-dash { width: 170px; }
+.hud-ult-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 10px; }
+
+.boss-bar {
+  position: absolute;
+  /* Keep the boss bar below the top HUD row and room map. */
+  top: 112px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(620px, 74%);
+  text-align: center;
+}
+.boss-bar[hidden] { display: none; }
+.boss-name {
+  font-size: 15px;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  color: #ff9a78;
+  margin-bottom: 6px;
+  text-shadow: 0 0 20px rgba(200, 69, 47, .8);
+}
+
+/* ---------------- Overlays ----------------
+
+   Overlays cover the rendered world, so they use the same letterbox band as
+   the HUD (see the note above `.hud`). Only the world is dimmed; the bars
+   stay black rather than being tinted, which keeps the illusion that the
+   band is the screen. */
+
+.overlay {
+  position: absolute;
+  top: var(--view-top, 0);
+  left: var(--view-left, 0);
+  width: var(--view-width, 100%);
+  height: var(--view-height, 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  background: rgba(4, 4, 9, .84);
+  backdrop-filter: blur(3px);
+  z-index: 10;
+}
+.overlay[hidden] { display: none; }
+.overlay-flat { background: rgba(4, 4, 9, .96); }
+.overlay-enter { animation: overlayFadeIn .24s ease-out both; }
+.overlay-enter .panel { animation: panelRiseIn .34s cubic-bezier(.2, .75, .25, 1) both; }
+@keyframes overlayFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.transition-text {
+  font-size: 30px;
+  letter-spacing: 10px;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-shadow: 0 0 30px var(--accent-glow);
+  animation: fadeUp .5s ease-out;
+}
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } }
+
+/* A full-band wipe makes room changes legible without lingering on screen. */
+.transition-wipe { animation: transitionWipe .52s cubic-bezier(.7, 0, .3, 1) both; }
+.transition-wipe .transition-text { animation: transitionTextIn .36s .08s ease-out both; }
+@keyframes transitionWipe { 0% { opacity: 0; clip-path: inset(0 100% 0 0); } 38% { opacity: 1; clip-path: inset(0 0 0 0); } 72% { opacity: 1; clip-path: inset(0); } 100% { opacity: 0; clip-path: inset(0 0 0 100%); } }
+@keyframes transitionTextIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.shop-grid, .reward-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.shop-item, .reward-item {
+  padding: 14px;
+  background: linear-gradient(180deg, #1c1c2c, #131320);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  text-align: left;
+  transition: border-color .15s, transform .18s ease, box-shadow .18s ease;
+}
+.reward-item { animation: rewardPopIn .34s cubic-bezier(.2, .8, .25, 1) both; animation-delay: calc(var(--reward-index, 0) * 70ms); }
+.reward-item:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0, 0, 0, .32); }
+@keyframes rewardPopIn { from { opacity: 0; transform: translateY(12px) scale(.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.shop-item.affordable { border-color: #4a6b4a; }
+.shop-item.affordable:hover { border-color: #7fd07f; }
+.shop-item.sold { opacity: .34; }
+
+.si-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.si-name.legendary { color: var(--gold); text-shadow: 0 0 14px rgba(232, 185, 85, .5); }
+.si-desc { font-size: 11px; color: var(--ink-dim); line-height: 1.5; min-height: 32px; }
+.si-buy {
+  margin-top: 10px;
+  width: 100%;
+  padding: 8px;
+  font-family: var(--font);
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--ink);
+  background: #23233a;
+  border: 1px solid var(--edge-bright);
+  border-radius: 5px;
+  cursor: pointer;
+}
+.si-buy:not(:disabled):hover { border-color: var(--gold); color: var(--gold); }
+.si-buy:disabled { opacity: .4; cursor: not-allowed; }
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 24px;
+  font-size: 14px;
+  padding: 18px 8px;
+  border-top: 1px solid var(--edge);
+  border-bottom: 1px solid var(--edge);
+  margin-bottom: 6px;
+  text-align: left;
+}
+.stats .st-label { color: var(--ink-dim); }
+.stats .st-value { text-align: right; font-weight: 700; }
+
+/* ---------------- Error box ---------------- */
+
+.error-box {
+  position: fixed;
+  left: 12px; right: 12px; bottom: 12px;
+  max-height: 40%;
+  overflow: auto;
+  padding: 14px 18px;
+  background: rgba(60, 10, 14, .95);
+  border: 1px solid #a8323f;
+  border-radius: 6px;
+  color: #ffd6da;
+  font-family: Consolas, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  z-index: 100;
+}
+.error-box[hidden] { display: none; }
+
+@media (max-width: 720px) {
+  .class-grid, .ult-list { grid-template-columns: 1fr; }
+  .title { font-size: 38px; }
+  .hud-ult { width: 180px; }
+  .hud-dash { width: 110px; }
+  .hud-hp { min-width: 150px; }
+}
