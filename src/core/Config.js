@@ -20,6 +20,21 @@ export const CONFIG = {
     maxFrameDelta: 0.25,
   },
 
+  /** Timings shared by room lifecycle and death animations. */
+  room: {
+    enemyDeathDuration: 1.2,
+    playerDeathDuration: 1.4,
+    healingFraction: 0.30,
+    bossGuardCount: 5,
+  },
+
+  ui: {
+    noticeDuration: 2.6,
+    startTransitionDuration: 1.3,
+    floorTransitionDuration: 1.4,
+    bossTransitionDuration: 2.0,
+  },
+
   run: {
     /**
      * Floors in one campaign (§18: boss → next floor → ... → victory).
@@ -82,6 +97,49 @@ export const CONFIG = {
      * constant no matter how long a fight runs.
      */
     decalCapacity: 96,
+    /**
+     * Damage-number aggregation.
+     *
+     * A piercing explosive weapon lands many hits per second: the Staff of the
+     * Void measured 78 hits/s inside a pack, and one label per hit put ~120
+     * live labels on screen. Each label costs a font switch plus a stroked and
+     * a filled glyph run, so labels became the single largest per-frame drawing
+     * cost in the game — 45% of that scene's render time, and the text layer
+     * was still saturating its own ceiling of 140.
+     *
+     * Consecutive hits on the same body therefore fold into one number that
+     * keeps counting. The player sees the same information (the damage they are
+     * doing) with a tenth of the glyph work, and it reads better: a pack taking
+     * a blast shows one rising total instead of a cloud of colliding digits.
+     */
+    damageNumber: {
+      /** Only fold into a label younger than this, in seconds. */
+      mergeWindow: 0.26,
+      /**
+       * ...and only into one within this many pixels of the new hit. Wide
+       * enough that a blast catching several bodies reads as one number for
+       * the impact zone, which is both cheaper and easier to read than five
+       * labels fighting for the same patch of screen.
+       */
+      mergeRadius: 52,
+      /**
+       * How far back to look for a merge target. Recent labels live at the end
+       * of the list, so a short scan finds every candidate — and keeps the
+       * merge itself O(1) instead of a scan over the whole population.
+       */
+      lookback: 16,
+    },
+    /**
+     * Impact-effect scale for damage that arrives from an area blast rather
+     * than a direct hit.
+     *
+     * An explosion that catches nine bodies used to fire nine full impact
+     * bursts on one frame. The step budget then dropped most of them, so the
+     * player saw a *worse* effect and still paid for every attempt. Emitting a
+     * fraction per body keeps the blast inside the budget, so the visual is
+     * consistent instead of randomly pruned.
+     */
+    areaVfxScale: 0.35,
   },
 
   combat: {
@@ -117,6 +175,17 @@ export const CONFIG = {
      * At this rate a full charge from time alone takes ~33s.
      */
     ultChargePerSecond: 3,
+
+    /**
+     * How often damage-over-time reports itself.
+     *
+     * A hazard the player is standing in deals damage every fixed step, but
+     * neither the player nor the mixer wants sixty reports a second: the damage
+     * is applied continuously — which is what makes the configured dps the dps
+     * actually taken — while the label, the sound and the shake fire at this
+     * interval, so a burn reads as a burn instead of a strobe.
+     */
+    dotFeedbackInterval: 0.35,
 
     /**
      * Total living non-boss enemies a room may contain. Summoners (the
@@ -168,5 +237,69 @@ export const CONFIG = {
      * which is the strongest single reward in the game and is meant to be.
      */
     bossEliteLegendaryBonus: 0.3,
+  },
+
+  /**
+   * Procedural audio (Web Audio API). Every value here bounds *cost*, not
+   * artistic choice: the voice ceiling and the retrigger guard are what keep a
+   * busy arena from stacking hundreds of live nodes on one frame.
+   */
+  audio: {
+    /** Mixer defaults, also the shape persisted to localStorage. */
+    defaults: {
+      master: 0.8,
+      /**
+       * Music sits under the effects instead of beside them. The shipped track
+       * is a hot master (mean −15.8 dB, peak −0.6 dB), so at 0.45 × master it
+       * lands around −25 dBFS — just under the bus compressor's knee, which is
+       * where a bed belongs: audible, never fighting a sword hit.
+       */
+      music: 0.45,
+      effects: 0.85,
+      muted: false,
+    },
+    /**
+     * Simultaneous one-shot voices. Each voice is a source + gain (+ panner),
+     * so this is a hard ceiling on the node count the mixer can create,
+     * regardless of how many hits land on the same frame.
+     */
+    maxVoices: 14,
+    /**
+     * Voices the mixer accepts when the frame rate is degraded (see
+     * `AudioSystem.setQuality`). Halving it is invisible during a fight but
+     * removes roughly half the graph work on a struggling machine.
+     */
+    maxVoicesReduced: 7,
+    /**
+     * Minimum seconds between two plays of the *same* preset. A Hellstorm
+     * firing 24 rounds a second must not become 24 copies of one gunshot
+     * sample: identical sounds fuse into a single denser voice instead.
+     */
+    retriggerGuard: 0.035,
+    /**
+     * Distance at which a world sound is fully attenuated. Everything beyond
+     * it is not played at all — the cheapest voice is the one never created.
+     */
+    audibleRadius: 1150,
+    /** Floor on distance attenuation, so a far-off hit is still a hint. */
+    minAudibleGain: 0.16,
+    /** How much a sound is panned across the stereo field at full offset. */
+    maxPan: 0.72,
+    /**
+     * Master bus ceiling. A single compressor replaces per-sound limiting:
+     * twenty simultaneous impacts duck instead of clipping.
+     */
+    busThreshold: -14,
+    busKnee: 22,
+    busRatio: 8,
+    /** Fade applied when a voice is stolen or stopped, so nothing clicks. */
+    releaseFade: 0.028,
+    /**
+     * Music fades. The track itself already fades in and out at its own ends,
+     * so these only smooth a start mid-run and a stop at the run's end; they
+     * are deliberately short enough not to be heard as a fade.
+     */
+    musicFadeIn: 1.2,
+    musicFadeOut: 2.0,
   },
 };

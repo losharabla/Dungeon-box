@@ -2,7 +2,9 @@
 
 A complete 2D roguelike prototype for the browser: **HTML5 Canvas + vanilla JavaScript ES modules**.
 No build step, no bundler, no framework, and **not a single external image asset** — every
-character, weapon, boss, wall and effect is drawn procedurally with Canvas primitives.
+character, weapon, boss, wall and effect is drawn procedurally with Canvas primitives. Sound
+effects are synthesised the same way; the one asset in the repository is the original music
+track in `assets/music/`.
 
 The implementation follows the design document (`диздок.txt`) in this folder.
 
@@ -23,10 +25,42 @@ bounded impact marks, crit/kill hit-stop and feedback, breathing and cloth
 motion on characters, melee wind-up poses, and animated screen/transition,
 reward, and end-screen UI states.
 
+### Per-hit cost is bounded, and measured
+
+An effect that fires *once per hit* is a performance bug waiting for a weapon that
+hits a lot, so the multiplier weapons are measured explicitly rather than assumed
+safe (`npm run perf`, plus a `void staff` scene in the frame-cost budgets).
+
+The Staff of the Void pierces every body in its path and detonates on half of
+them: inside a packed arena it lands ~13x the hits of a normal weapon and once
+put ~120 live damage labels and 650 live particles on screen. Damage numbers
+turned out to be the single largest per-frame drawing cost in the game — each
+label is a font switch plus a stroked and a filled glyph run.
+
+| Per frame, same seed, same 4x4 pack | before | after |
+| --- | --- | --- |
+| live damage labels | 83 | **17** |
+| `fillText` calls | 86 | **20** |
+| live particles | 653 | **253** |
+| particles dropped by the step budget | 182 | **104** |
+| canvas `save`/`restore` | 560 | **220** |
+| recorded render time | 0.286 ms | **0.147 ms** |
+
+Three changes did it: consecutive hits on the same body fold into one rising
+number (`CONFIG.render.damageNumber`), label fonts are quantised and only
+assigned when they change, and area damage emits a fraction of a direct hit's
+impact burst. That last one also *improves* the look: a blast catching nine
+bodies used to ask for nine full bursts on one frame and have two thirds of them
+silently dropped, so the effect is now consistent instead of randomly pruned.
+
+With those in place the exotic weapon costs the same per frame as a starting
+one, and the budgets in `tools/frame-cost.mjs` fail the build if that changes.
+
 Verification commands:
 
 ```text
 npm test                    core, DOM, graphics, balance, and frame-cost budgets
+npm run perf                per-weapon cost attribution: counts and ms per frame
 npm run test:survivability  before/after benchmark: can each class live in a late arena?
 npm run test:soak          long campaign/resource soak and emission-budget checks
 npm run test:arenas        12 arena clearability simulations
@@ -141,8 +175,7 @@ imports a global `game` object; every system receives what it needs through its 
 │   │   ├── LootSystem.js         Rewards and shop stock
 │   │   └── UltimateSystem.js     The 9 ultimate abilities
 │   │
-│   ├── rendering/          Procedural Canvas drawing (§23–§25)
-│   │   ├── RenderSystem.js       Canvas ownership, scaling, camera, shake
+│   ├── rendering/          Procedural Canvas drawing (§23–§25)│   │   ├── RenderSystem.js       Canvas ownership, scaling, camera, shake
 │   │   ├── SceneRenderer.js      Draw ordering for the whole scene
 │   │   ├── drawUtils.js          Reusable Canvas primitives
 │   │   ├── characterRenderer.js  Humanoid rig + every enemy silhouette
@@ -159,8 +192,21 @@ imports a global `game` object; every system receives what it needs through its 
 │   │   ├── decals.js             Bounded floor marks (blood, scorch, chips)
 │   │   └── entityRenderer.js     Enemy kind → draw function dispatch
 │   │
+│   ├── audio/              Procedural sound + streamed music
+│   │   ├── AudioSystem.js      The mixer: context, buses, voices, pools
+│   │   ├── soundPresets.js     26 procedural sounds (data)
+│   │   ├── audioBindings.js    Game event → preset translation
+│   │   ├── audioControls.js    The four-member surface the UI is given
+│   │   ├── audioSettings.js    Mixer defaults, sanitising, persistence
+│   │   ├── MusicPlayer.js      Streaming, looping background track
+│   │   └── musicTracks.js      Track table + its measured properties (data)
+│   │
 │   └── ui/
 │       └── UIManager.js    Every DOM element outside the canvas
+│
+├── assets/
+│   └── music/              The only binary asset in the project
+│       └── shadow-labyrinth.mp3   Original score, 2:52, 48 kHz stereo
 │
 └── tools/                  Development tooling (not shipped with the game)
     ├── serve.mjs              Zero-dependency static server (+ port auto-pick)
@@ -171,6 +217,8 @@ imports a global `game` object; every system receives what it needs through its 
     ├── camera-test.mjs        Camera follow behaviour and framing
     ├── graphics-test.mjs      Renders real frames against a recording context
     ├── balance-test.mjs       Kiters, parry, ultimate charge, whirlwind, dash
+    ├── audio-test.mjs         Mixer bounds and music playback against fakes
+    ├── perf-profile.mjs       Per-weapon cost attribution (counts, not vibes)
     ├── hitbox-audit.mjs       Measures drawn silhouettes against their hit boxes
     ├── survivability-test.mjs Late-arena survival benchmark (no invincibility cheat)
     ├── soak-test.mjs          Long campaign + resource-leak soak
@@ -306,6 +354,85 @@ animation:
 * Weapons follow the hand, rotate toward the cursor, and show recoil and muzzle flash (§24).
 * Boss attacks draw a ground telegraph before they land (§25).
 
+### Procedural audio
+
+The same rule as the art: **no audio files**. Every sound is synthesised with the Web
+Audio API from a declarative preset in `audio/soundPresets.js` — an oscillator layer, a
+noise layer through a filter, an envelope, a pitch sweep. Adding a sound means adding an
+object to that file; `AudioSystem` interprets it and no game system names a sound.
+
+The mixer is built to have a *bounded* cost, because an unbounded "play a sound per hit"
+is the audio equivalent of unbounded particles:
+
+* **Lazy context** — the `AudioContext` is created on the first user gesture, so an
+  untouched menu holds no audio resources and the autoplay policy is satisfied rather
+  than fought.
+* **Voice ceiling** (`maxVoices`) — at most 14 one-shot voices ring at once. Past that,
+  the least important voice is faded out for `releaseFade` seconds and the new one takes
+  its place; a cue that is more important than everything playing always gets through, and
+  an incidental one is refused instead.
+* **Retrigger guard** — one preset cannot restart inside its cooldown, so a Hellstorm's
+  24 rounds a second fuse into one denser sound instead of 24 stacked clones.
+* **Distance culling** — anything past `audibleRadius` is never synthesised. The cheapest
+  voice is the one that does not exist.
+* **Node pools** — gains, filters and panners are recycled; only the source node, which
+  cannot be reused, is allocated per sound. The pool ceilings are derived from the voice
+  ceiling, because a cache smaller than the working set recycles a few nodes and
+  reallocates the rest.
+* **Shared noise** — three white-noise buffers are generated once per context and replayed
+  by every noise layer.
+* **One compressor** on the master bus replaces per-sound limiting, so twenty simultaneous
+  impacts duck instead of clipping and every preset can stay quiet enough to layer.
+* **One cleanup pass** — finished voices are pruned against the audio clock once per
+  rendered frame, not by a timer per voice.
+* **Degraded quality** — the same watchdog that trims particle density also lowers the
+  voice ceiling when the frame rate sags, and the context is suspended while the tab is
+  hidden.
+
+**Controls.** `Звук` in the main menu (or the pause screen) opens the mixer: master, music
+and effects levels plus a mute toggle. The markup is generated once and written into both
+panels, so the two can never drift apart. Settings persist in `localStorage` and are
+sanitised field-by-field on load — one corrupt entry cannot silence a channel.
+
+The debug overlay reports `A <voices> (-<dropped>)` and `M on/off`, so the mixer's pressure
+and the state of the music are visible rather than guessed at.
+
+### Music
+
+`assets/music/shadow-labyrinth.mp3` is the original score, written for the game. It is the
+only binary asset in the repository, and it is shipped **unmodified** — the measurements in
+`musicTracks.js` are why:
+
+| Property | Measured |
+| --- | --- |
+| Duration | 172.27 s (2:52) |
+| Format | MP3, 48 kHz stereo, 128 kbps |
+| Level | mean −15.8 dB, peak −0.6 dB |
+| Head | silent to 0.78 s, then fades in (mean −25.6 dB across 0.78–2.28 s) |
+| Tail | fades out from 171.70 s (−56.3 dB across the last 1.5 s) |
+
+The piece already begins and ends in silence, so `loop` produces a natural breath at the
+loop point rather than an edit. Trimming or crossfading it would need a second lossy encode
+and would only make the seam worse.
+
+**Streamed, not decoded.** The obvious Web Audio approach — decode the file into an
+`AudioBuffer` and loop an `AudioBufferSourceNode` — would hold 172 s × 48 kHz × 2 ch × 4
+bytes ≈ **66 MB of float PCM** for the whole session, an order of magnitude more memory than
+the rest of the game combined. Instead an `HTMLAudioElement` is routed through a
+`MediaElementAudioSourceNode`, so the browser streams and decodes incrementally and the
+resident cost is a small buffer. Level, mute and fades still happen in the Web Audio graph,
+so music obeys the same mixer as the effects.
+
+The track loops for a whole run and is deliberately *not* restarted between floors or
+rooms — only starting a new run restarts it. It fades in when a run starts and fades out on
+death, victory or abandoning, driven by the same once-per-frame `update()` pass as the
+voice cleanup, so the player owns no timers. If the file is missing or undecodable the
+failure is counted and logged, and the game stays fully playable in silence.
+
+The dev server serves it as `audio/mpeg` with `Accept-Ranges: bytes` and real `206 Partial
+Content` responses, because a media element probes with a Range request to decide whether a
+resource is seekable — that is what makes looping reliable.
+
 ---
 
 ## Tests
@@ -321,6 +448,8 @@ npm run test:align    # HUD band vs letterboxed world band
 npm run test:camera   # camera follow behaviour and framing
 npm run test:graphics # real frames rendered against a recording context
 npm run test:balance  # kiters, parry, ultimate charging, whirlwind and dash
+npm run test:audio    # mixer bounds: voice ceiling, culling, pools, bindings, music
+npm run perf          # where a frame's time goes, per weapon (counts + ms)
 npm run test:hitboxes # measured coverage of every drawn silhouette
 npm run test:survivability # late-arena survival benchmark, no invincibility cheat
 npm run test:soak     # long campaign and resource-leak soak
@@ -336,12 +465,13 @@ Current status (verified locally):
 Latest verification also recorded: frame-cost budgets passed (busy arena: 0 radial / 0 linear gradients, 6.8x overdraw, boss room 8.2x) plus baked-layer wall coverage checks; `npm run test:soak` passed 6/6 checks across 8 floors, 48 rooms and 8 boss fights (peak: 386 particles, 17 projectiles); `npm run test:hitboxes` reported 13/13 drawn silhouettes covered; `npm run test:arenas` cleared 12/12 arenas (12.5s average, 16.1s slowest); `npm run test:survivability` passed 7/7 with the melee class ahead of its pre-fix self in every measure; `npm run test:campaign` completed all 6 class/ultimate campaigns.
 
 ```
-  38/38 unit + regression checks passed
- 11/11 DOM and boot checks passed — including the boss → victory → next-floor UI path
+  44/44 unit + regression checks passed
+ 12/12 DOM and boot checks passed — including the boss → victory → next-floor UI path
  8/8  HUD alignment checks passed
  6/6  camera framing checks passed
 13/13 graphics checks passed
  18/18 balance checks passed
+ 23/23 audio checks passed — voice ceiling, retrigger guard, culling, node pools, music
  13/13 drawn silhouettes covered by their hit box
   7/7  survivability checks passed (late arena, 3 classes, mercy window on/off)
  6/6  swept parry regression checks passed
@@ -362,7 +492,12 @@ without a browser. This is what made the visual bugs below findable.
 * **`smoke-test.mjs`** — engine primitives (loop, bus, state machine, collision, RNG),
   data integrity against the design document's content counts, entity/status behaviour,
   dungeon-graph rules from §19, and **regression tests for every bug found during
-  development** (see below).
+  development** (see below). It also cross-checks the data-driven seams, because the
+  open/closed structure means a typo is silent by design: every enemy `ai` block has a
+  behaviour, every enemy id has a renderer, every *declared* boss attack is driven through
+  the real controller and must have an observable effect (the `switch` ends in
+  `default: break`, so an unhandled `kind` would be a dead attack), and the altar's
+  blessings come from the upgrade data rather than a second list.
 * **`dom-test.mjs`** — parses the real `index.html`, constructs `UIManager` against a DOM
   stub, and then **imports the real `main.js`** to prove the game actually boots. This
   catches missing element ids, broken import paths, and mis-wired shared objects — the usual

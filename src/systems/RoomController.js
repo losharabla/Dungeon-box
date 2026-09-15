@@ -10,9 +10,11 @@
  */
 
 import { EVENTS } from '../core/EventBus.js';
+import { CONFIG } from '../core/Config.js';
+import { rng } from '../core/Random.js';
 import { Room } from '../entities/Room.js';
 import { getWeapon } from '../data/weapons.js';
-import { getUpgrade } from '../data/upgrades.js';
+import { getUpgrade, REWARD_UPGRADE_IDS } from '../data/upgrades.js';
 
 /** Room dimensions per type, in world pixels. */
 const ROOM_SIZES = {
@@ -186,7 +188,7 @@ export class RoomController {
         if (node.elite === true) {
           runtime.eliteBoss = true;
           this.spawner.spawnWave(
-            { label: 'Стража босса', count: 5, elite: true, delay: 0 },
+            { label: 'Стража босса', count: CONFIG.room.bossGuardCount, elite: true, delay: 0 },
             player.x,
             player.y,
           );
@@ -198,12 +200,15 @@ export class RoomController {
 
       case 'healing': {
         // Design doc §16: heal 30% of max HP on entry, plus a small bonus.
-        const healAmount = Math.round(player.maxHp * 0.30);
+        const healAmount = Math.round(player.maxHp * CONFIG.room.healingFraction);
         const healed = player.heal(healAmount);
         player.stats.healingReceived = (player.stats.healingReceived ?? 0) + healed;
 
-        const bonusIds = ['heal_max_hp_10', 'heal_damage_10', 'heal_speed_10'];
-        const bonusId = bonusIds[Math.floor(Math.random() * bonusIds.length)];
+        // The pool comes from the upgrade data (`source: 'reward'`), not from a
+        // list repeated here: a new altar blessing used to need an edit in this
+        // file as well, which is exactly the drift the data file exists to
+        // prevent.
+        const bonusId = rng.pickOne(REWARD_UPGRADE_IDS);
         runtime.reward = [{
           kind: 'upgrade', id: bonusId, name: '', desc: '', price: 0,
         }];
@@ -214,7 +219,7 @@ export class RoomController {
       }
 
       case 'shop': {
-        runtime.shopStock = this.loot.buildShopStock(player.classId, floorIndex);
+        runtime.shopStock = this.loot.buildShopStock(player.classId, floorIndex, player.weaponId);
         break;
       }
 
@@ -338,7 +343,7 @@ export class RoomController {
     rt.room.unseal();
     player.stats.roomsCleared++;
     if (rt.type === 'arena') {
-      rt.reward = this.loot.rollArenaReward(player.classId, rt.floor ?? 0, false);
+      rt.reward = this.loot.rollArenaReward(player.classId, rt.floor ?? 0, false, player.weaponId);
     } else if (rt.type === 'boss') {
       rt.reward = this._bossReward(player, rt.eliteBoss === true);
     }
@@ -357,7 +362,7 @@ export class RoomController {
    * @returns {any[]}
    */
   _bossReward(player, elite = false) {
-    return this.loot.rollBossReward(player.classId, elite);
+    return this.loot.rollBossReward(player.classId, elite, player.weaponId);
   }
 
   /**
@@ -366,9 +371,15 @@ export class RoomController {
    * @param {any} choice
    */
   takeReward(player, choice) {
-    if (!choice) return;
+    // Rewards are single-use. Validate that this choice belongs to the active
+    // room before applying it, so double clicks or stale overlay callbacks
+    // cannot duplicate weapons, upgrades, or gold.
+    if (!choice || !this.current || !Array.isArray(this.current.reward)) return false;
+    if (!this.current.reward.includes(choice)) return false;
+
     this._applyLoot(player, choice);
-    if (this.current) this.current.reward = [];
+    this.current.reward = [];
+    return true;
   }
 
   /**

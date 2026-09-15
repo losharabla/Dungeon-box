@@ -405,6 +405,53 @@ await check('main.js boots and wires the loop without throwing', async () => {
   assert.equal(handle.state.current, 'menu', 'the game must boot on the main menu');
 });
 
+await check('the mixer is wired, and degrades silently with no Web Audio', async () => {
+  // This stub has no `AudioContext`, which is exactly the situation the audio
+  // layer must survive: the boot and the whole feature set stay usable, and
+  // nothing throws. The synth itself is measured in `audio-test.mjs`.
+  const handle = /** @type {any} */ (globalThis.window).__roguelike;
+  const { audio, ui } = handle;
+  assert.ok(audio, 'main.js must expose the mixer');
+  assert.equal(audio.supported, false, 'this stub provides no AudioContext');
+  assert.equal(await audio.unlock(), false, 'unlock must report failure, not throw');
+  assert.equal(audio.play('hit_flesh'), null, 'play must be a silent no-op');
+  assert.equal(audio.ctx, null, 'no graph may exist without a context');
+
+  // The mixer controls must still render and be operable: the UI adapter is
+  // the null object, so driving it changes nothing and throws nothing.
+  const container = ui.el.settingsPause;
+  const rows = container.querySelectorAll('.setting-range');
+  assert.equal(rows.length, 3, 'the pause screen must offer three levels');
+
+  const ranges = Object.fromEntries(
+    rows.map((r) => [r.getAttribute('data-setting'), r]),
+  );
+  for (const key of ['master', 'music', 'effects']) {
+    assert.ok(ranges[key], `#settings-pause must hold the ${key} slider`);
+    assert.equal(ranges[key].getAttribute('min'), '0', `${key} must start at 0`);
+    assert.equal(ranges[key].getAttribute('max'), '100', `${key} must end at 100`);
+  }
+  assert.equal(
+    ui.el.settingsMenu.querySelectorAll('.setting-range').length,
+    3,
+    'the main menu must offer the same three levels',
+  );
+  assert.ok(
+    ui.el.settingsMenu.querySelectorAll('.setting-mute').length === 1
+    && ui.el.settingsPause.querySelectorAll('.setting-mute').length === 1,
+    'both panels must offer the mute toggle',
+  );
+
+  ranges.master.value = '40';
+  ranges.master.dispatch('input');
+  assert.equal(ui.el.settingsMenu.querySelectorAll('.setting-value')[0].textContent, '40%',
+    'moving one slider must update both readouts');
+
+  audio.setQuality(0.5);
+  audio.update();
+  audio.destroy();
+});
+
 await check('a full run survives UI-driven start and a frame step', async () => {
   const handle = /** @type {any} */ (globalThis.window).__roguelike;
   assert.ok(handle, 'the boot handle must exist');

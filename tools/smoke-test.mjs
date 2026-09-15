@@ -969,6 +969,336 @@ await check('REGRESSION: summoners cannot flood the arena', async () => {
   assert.ok(minions > 0, 'the summon must still produce minions below the cap');
 });
 
+await check('REGRESSION: a hazard burns for its real dps, not for one point a tick', async () => {
+  // Reported problem: hazard damage-per-second went through `applyHit`, which
+  // models a *blow*. Two of its rules then broke the burn:
+  //   * the flat armour floor `Math.max(1, damage - armor)` turned a 0.175 HP
+  //     per-frame slice into exactly 1 damage, and
+  //   * every accepted tick opened the player's 0.4 s mercy window, so two
+  //     thirds of the burn was refused as "МИМО" and — far worse — the window
+  //     never closed, making the player *invulnerable to everything else*
+  //     while standing in fire.
+  const { EventBus } = await import('../src/core/EventBus.js');
+  const { StateMachine } = await import('../src/core/StateMachine.js');
+  const { Game } = await import('../src/game/Game.js');
+
+  const bus = new EventBus();
+  const game = new Game({
+    bus,
+    state: new StateMachine(bus, 'menu'),
+    callbacks: {
+      onStateChange() {}, onRoomCleared() {}, onBossSpawned() {},
+      onPlayerDeath() {}, onNotice() {},
+    },
+  });
+  game.startRun('warrior', 'whirlwind', 4242);
+  game.rooms.runtime.cleared = true;
+  for (const e of game.registry.enemies) e.kill();
+
+  const player = game.getPlayer();
+  player.hp = player.maxHp;
+
+  const dps = 10.5;
+  game.bossController.hazards.push({
+    kind: 'fire', x: player.x, y: player.y, radius: 60,
+    life: 3, maxLife: 3, damage: dps, color: '#ff4d1a',
+    telegraphOnly: true, damagePerSecond: true,
+    damageApplied: false, expired: false, onExpire: null, owner: null,
+  });
+
+  const before = player.hp;
+  for (let i = 0; i < 60 * 3; i++) {
+    game.update(1 / 60, {
+      move: { x: 0, y: 0 }, aim: { x: 640, y: 360 },
+      attackHeld: false, attackPressed: false, ultPressed: false,
+    });
+  }
+
+  // The hazard is emitted only in the last 35% of its life.
+  const expected = dps * 3 * 0.35;
+  const lost = before - player.hp;
+  assert.ok(
+    Math.abs(lost - expected) < expected * 0.15,
+    `a fire wall must deal roughly its configured damage (${lost.toFixed(2)} vs ${expected.toFixed(2)})`,
+  );
+  assert.ok(lost > 5, `the burn must not be swallowed by the mercy window (${lost.toFixed(2)})`);
+  assert.equal(
+    game.floatingText.texts.filter((t) => t.text === 'МИМО').length,
+    0,
+    'a burn must not be reported as a blocked hit',
+  );
+
+  // And it must not hand out free invulnerability: a boss slam still lands.
+  player.hp = player.maxHp;
+  player.status.clear();
+  game.bossController.hazards.length = 0;
+  game.bossController.hazards.push({
+    kind: 'fire', x: player.x, y: player.y, radius: 60,
+    life: 3, maxLife: 3, damage: dps, color: '#ff4d1a',
+    telegraphOnly: true, damagePerSecond: true,
+    damageApplied: false, expired: false, onExpire: null, owner: null,
+  });
+  for (let i = 0; i < 60 * 2.2; i++) {
+    game.update(1 / 60, {
+      move: { x: 0, y: 0 }, aim: { x: 640, y: 360 },
+      attackHeld: false, attackPressed: false, ultPressed: false,
+    });
+  }
+  const hpBeforeSlam = player.hp;
+  game.combat.applyHit(player, { damage: 40, source: 'boss_slam' }, null);
+  assert.ok(
+    hpBeforeSlam - player.hp >= 40,
+    `standing in fire must not make the player immune (slam took ${(hpBeforeSlam - player.hp).toFixed(1)} of 40)`,
+  );
+});
+
+await check('REGRESSION: the shop never sells the weapon you are holding', async () => {
+  // Reported problem: the stock and reward pools were "every weapon this class
+  // may use", which includes the one already equipped. The shop charged 50 gold
+  // for a weapon the player owns and the reward consumed itself for one, and
+  // neither screen said so — measured at ~29% of shop offers and ~12% of arena
+  // weapon offers before the fix.
+  const { LootSystem } = await import('../src/systems/LootSystem.js');
+  const { CLASS_IDS, getClass } = await import('../src/data/classes.js');
+  const loot = new LootSystem();
+  const rounds = 300;
+
+  for (const classId of CLASS_IDS) {
+    const equipped = getClass(classId).startingWeapon;
+    for (let i = 0; i < rounds; i++) {
+      const stock = loot.buildShopStock(classId, 1, equipped);
+      const shopOffer = stock.find((s) => s.kind === 'weapon');
+      assert.ok(shopOffer, `${classId}: the shop must always stock a weapon`);
+      assert.notEqual(shopOffer.id, equipped, `${classId}: the shop offered the equipped weapon`);
+
+      const reward = loot.rollArenaReward(classId, 1, false, equipped);
+      const rewardOffer = reward.find((c) => c.kind === 'weapon');
+      if (rewardOffer) {
+        assert.notEqual(rewardOffer.id, equipped, `${classId}: a reward offered the equipped weapon`);
+      }
+
+      const bossReward = loot.rollBossReward(classId, false, equipped);
+      const bossOffer = bossReward.find((c) => c.kind === 'weapon');
+      assert.ok(bossOffer, `${classId}: a boss must always drop a weapon offer`);
+      assert.notEqual(bossOffer.id, equipped, `${classId}: a boss offered the equipped weapon`);
+    }
+  }
+
+  // A class whose only weapon is the one it starts with still gets an offer.
+  const fallback = LootSystem.withoutEquipped(['only'], 'only');
+  assert.deepEqual(fallback, ['only'], 'the filter must not empty a pool of one');
+  assert.deepEqual(LootSystem.withoutEquipped(['a', 'b'], null), ['a', 'b'], 'no filter without an id');
+});
+
+await check('REGRESSION: the altar blessing comes from the upgrade data', async () => {
+  // The healing room used to hardcode its three blessings, duplicating the
+  // `source: 'reward'` entries in the upgrade data and leaving the exported
+  // REWARD_UPGRADE_IDS unused. Adding a fourth blessing therefore meant editing
+  // RoomController — exactly the drift the data file exists to prevent.
+  const { REWARD_UPGRADE_IDS, getUpgrade } = await import('../src/data/upgrades.js');
+  assert.ok(REWARD_UPGRADE_IDS.length >= 3, 'there must be altar blessings to hand out');
+  for (const id of REWARD_UPGRADE_IDS) {
+    assert.ok(getUpgrade(id), `${id} must exist in the upgrade table`);
+  }
+
+  const { EventBus } = await import('../src/core/EventBus.js');
+  const { StateMachine } = await import('../src/core/StateMachine.js');
+  const { Game } = await import('../src/game/Game.js');
+
+  let found = null;
+  for (let seed = 1; seed < 120 && !found; seed++) {
+    const bus = new EventBus();
+    const game = new Game({
+      bus,
+      state: new StateMachine(bus, 'menu'),
+      callbacks: {
+        onStateChange() {}, onRoomCleared() {}, onBossSpawned() {},
+        onPlayerDeath() {}, onNotice() {},
+      },
+    });
+    game.startRun('warrior', 'whirlwind', seed);
+    const offer = game.run.exits().find((o) => o.type === 'healing');
+    if (!offer) continue;
+    game.travelTo(offer.id);
+    found = game.rooms.runtime.healingBonusId;
+  }
+  assert.ok(found, 'a seeded floor must offer a healing room');
+  assert.ok(
+    REWARD_UPGRADE_IDS.includes(found),
+    `the altar granted "${found}", which is not a reward upgrade`,
+  );
+});
+
+await check('every boss attack in the data actually does something', async () => {
+  // `BossController.execute` ends in `default: break`. A data row naming a kind
+  // the controller does not handle would therefore be a *silent* dead attack:
+  // the boss would telegraph, spend the cooldown and do nothing at all. This
+  // drives every declared attack of every boss through the real controller and
+  // requires an observable effect.
+  const { BOSSES } = await import('../src/data/bosses.js');
+  const { EventBus } = await import('../src/core/EventBus.js');
+  const { StateMachine } = await import('../src/core/StateMachine.js');
+  const { Game } = await import('../src/game/Game.js');
+
+  let checked = 0;
+  for (const [bossId, def] of Object.entries(BOSSES)) {
+    const bus = new EventBus();
+    const game = new Game({
+      bus,
+      state: new StateMachine(bus, 'menu'),
+      callbacks: {
+        onStateChange() {}, onRoomCleared() {}, onBossSpawned() {},
+        onPlayerDeath() {}, onNotice() {},
+      },
+    });
+    game.startRun('warrior', 'whirlwind', 4242);
+    game.run.enterNode(game.run.plan.bossId, game.getPlayer());
+
+    const boss = game.registry.enemies.find((e) => e.kind === 'boss');
+    assert.ok(boss, `${bossId} must spawn`);
+
+    for (const attack of def.attacks) {
+      const player = game.getPlayer();
+      player.alive = true;
+      player.hp = player.maxHp;
+      player.status.clear();
+
+      // Put the player in reach so range-gated attacks still fire, and clear
+      // the cooldowns so each attack is evaluated on its own.
+      player.x = boss.x + boss.radius + 20;
+      player.y = boss.y;
+      boss.alive = true;
+      boss.hp = boss.maxHp;
+      boss.globalCooldown = 0;
+      boss.staggerTimer = 0;
+      boss.attackLock = 0;
+
+      const snapshot = () => ({
+        projectiles: game.projectiles.count,
+        hazards: game.bossController.hazards.length,
+        enemies: game.registry.enemies.length,
+        hp: player.hp,
+        bx: Math.round(boss.x),
+        by: Math.round(boss.y),
+      });
+      const before = snapshot();
+
+      game.bossController.execute({
+        def: attack,
+        timer: 0,
+        total: attack.telegraph,
+        aimPoint: { x: player.x, y: player.y },
+        aimAngle: Math.atan2(player.y - boss.y, player.x - boss.x),
+      });
+
+      const after = snapshot();
+      const changed = Object.keys(before).some((k) => before[k] !== after[k]);
+      assert.ok(
+        changed,
+        `${bossId}.${attack.id} (kind "${attack.kind}") had no observable effect`,
+      );
+      checked++;
+    }
+    game.bossController.clear();
+  }
+  assert.ok(checked >= 12, `every declared attack must be covered (checked ${checked})`);
+});
+
+await check('REGRESSION: damage labels aggregate instead of stacking', async () => {
+  // Reported problem: a piercing explosive weapon (Staff of the Void) landed
+  // ~78 hits/s into a pack, and one label per hit put ~120 live labels on
+  // screen. Each label costs a font switch plus a stroked and a filled glyph
+  // run, which made labels the largest per-frame drawing cost in the game.
+  // Consecutive hits on the same body must fold into one rising number.
+  const { FloatingTextSystem } = await import('../src/rendering/textEffects.js');
+  const { CONFIG } = await import('../src/core/Config.js');
+  const text = new FloatingTextSystem(20);
+
+  for (let i = 0; i < 8; i++) text.addDamage(100, 100, 10);
+  assert.equal(text.texts.length, 1, 'a burst on one body must produce one label');
+  assert.equal(text.texts[0].text, '80', 'and the label must show the running total');
+  assert.equal(text.merged, 7, 'the folded hits must be counted');
+
+  // A crit is bigger and a different colour: it must not be swallowed.
+  text.addDamage(100, 100, 50, { color: '#ff5a5a', size: 22 });
+  assert.equal(text.texts.length, 2, 'a critical hit needs its own label');
+  assert.equal(text.texts[1].text, '50');
+
+  // A hit somewhere else is a different event.
+  text.addDamage(600, 100, 10);
+  assert.equal(text.texts.length, 3, 'a far-away hit must not merge');
+
+  // Once the window has passed, the same body starts counting again.
+  const { mergeWindow } = CONFIG.render.damageNumber;
+  for (const t of text.texts) t.life -= mergeWindow + 0.05;
+  text.addDamage(100, 100, 10);
+  assert.equal(text.texts.length, 4, 'an expired label must not absorb a new hit');
+
+  // Merging refreshes the label rather than growing the stack, and the refresh
+  // must not then hide that label from a later scan.
+  text.addDamage(100, 100, 5);
+  text.addDamage(100, 100, 5);
+  assert.equal(text.texts.length, 4, 'merging must never add a label');
+  assert.equal(text.texts[3].text, '20', 'the total keeps counting');
+
+  // Non-damage messages are one-offs and never merge.
+  const before = text.texts.length;
+  text.add(0, 0, '+5', { color: '#e8b955' });
+  text.add(0, 0, '+5', { color: '#e8b955' });
+  assert.equal(text.texts.length, before + 2, 'gold must stay its own label');
+
+  // Damage that is not damage produces nothing at all.
+  text.addDamage(0, 0, 0);
+  text.addDamage(0, 0, NaN);
+  text.addDamage(0, 0, -5);
+  assert.equal(text.texts.length, before + 2, 'zero and NaN damage must not label');
+});
+
+await check('REGRESSION: healing altar applies its bonus once and opens doors', async () => {
+  const { EventBus } = await import('../src/core/EventBus.js');
+  const { StateMachine } = await import('../src/core/StateMachine.js');
+  const { Game } = await import('../src/game/Game.js');
+
+  let game = null;
+  let healingOffer = null;
+  // Find a deterministic floor whose first choice includes an altar.
+  for (let seed = 1; seed < 100 && !healingOffer; seed++) {
+    const bus = new EventBus();
+    game = new Game({
+      bus,
+      state: new StateMachine(bus, 'menu'),
+      callbacks: {
+        onStateChange: () => {}, onRoomCleared: () => {}, onBossSpawned: () => {},
+        onPlayerDeath: () => {}, onNotice: () => {},
+      },
+    });
+    game.startRun('warrior', 'whirlwind', seed);
+    healingOffer = game.run.exits().find((offer) => offer.type === 'healing') ?? null;
+  }
+  assert.ok(game && healingOffer, 'a seeded floor must offer a healing room');
+
+  const player = game.getPlayer();
+  player.hp = player.maxHp - 50;
+  const hpBefore = player.hp;
+  const damageBefore = player.modifiers.damageMul;
+  game.travelTo(healingOffer.id);
+
+  // Healing is granted on entry; the altar bonus is granted by E interaction.
+  assert.ok(player.hp > hpBefore, 'entering the altar room must heal the player');
+  const result = game.interact();
+  assert.equal(result?.kind, 'healing', 'the altar must be interactable at room center');
+  assert.equal(game.rooms.runtime.reward.length, 0, 'the altar bonus must be consumed');
+  assert.equal(game.rooms.runtime.cleared, true, 'using the altar must clear the room');
+  assert.equal(game.rooms.runtime.room.doors.every((door) => door.open), true, 'altar doors must open after use');
+
+  const bonusId = result.payload.bonusId;
+  if (bonusId === 'heal_damage_10') {
+    assert.equal(player.modifiers.damageMul, damageBefore + 0.10, 'damage altar bonus must apply once');
+  }
+  const second = game.interact();
+  assert.equal(second, null, 'the altar must not be usable twice');
+});
+
 await check('REGRESSION: a cleared room always has an open door', async () => {
   // Bug: `Game.interact()` set `rt.cleared = true` directly for shop and
   // healing rooms, bypassing `Room.unseal()`. If such a room had been

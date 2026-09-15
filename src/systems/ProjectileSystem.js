@@ -467,7 +467,9 @@ export class ProjectileSystem {
         this.particles.burst('lightning', x, y, 7, { speed: 220 });
         break;
       case 'void':
-        this.particles.burst('void', x, y, 10, { speed: 170 });
+        // A piercing shot fires this once per body it passes through, so it
+        // carries less than a single-target bolt: the detonation is the payoff.
+        this.particles.burst('void', x, y, 6, { speed: 170 });
         break;
       case 'enemy_orbs':
         this.particles.burst('magic', x, y, 7, { speed: 130 });

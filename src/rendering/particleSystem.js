@@ -49,7 +49,12 @@ const PRESETS = {
   heal: { size: 3.6, drag: 2, gravity: -90, color: '#6ffbb0', life: 0.9 },
   explosion: { size: 8, drag: 3.4, color: '#ffb347', life: 0.55 },
   stone: { size: 4.6, drag: 2.6, gravity: 420, color: '#6b6357', life: 0.8 },
-  void: { size: 5, drag: 2.4, color: '#c05cff', life: 0.75 },
+  // `void` is emitted once per body a piercing shot passes through, so its
+  // life is kept in line with the other magic sparkles (`magic` is 0.48)
+  // rather than the 0.75 it started at: at the same emission rate a longer
+  // life is purely a larger steady-state population, and these are impact
+  // sparkles, not clouds.
+  void: { size: 5, drag: 2.4, color: '#c05cff', life: 0.52 },
 };
 
 export class ParticleSystem {

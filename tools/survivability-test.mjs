@@ -11,9 +11,8 @@
  *
  * This probe fights the same scripted pack, in the same room, with the same
  * brain for all three classes and no cheat, and reports how long each class
- * lasts. It runs the scenario twice — once with the pre-fix numbers, once
- * with the shipped ones — so the report is a before/after rather than a
- * number nobody can interpret.
+ * lasts. It is a controlled benchmark for the current balance, not a replay
+ * of historical tuning values.
  *
  * It is a controlled benchmark, not a simulation of skilled play: the bot
  * never dashes, never seeks cover, and holds the attack button down.
@@ -65,10 +64,8 @@ function assert(cond, msg) {
  * @returns {any}
  */
 function newGame(classId, ultimateId, seed) {
-  // The run seed pins the floor layout; the shared gameplay stream pins the
-  // wave composition; `withSeededRandom` below pins the enemy jitter. Together
-  // they make a benchmark run reproducible, which is what lets the pre-fix and
-  // shipped numbers be compared blow for blow.
+  // The run seed pins the floor layout; `withSeededRandom` below pins the
+  // current enemy jitter so repeated benchmark runs are comparable.
   rng.seed = (seed * 2654435761) >>> 0 || 1;
   rng.reset();
 
@@ -292,39 +289,6 @@ const CLASSES_TO_TEST = [
 ];
 
 /* ============================================================
-   Pre-fix data, so the report can show the delta
-   ============================================================ */
-
-const CURRENT = {
-  speed: CLASSES.warrior.speed,
-  swordDamage: WEAPONS.sword.baseDamage,
-  swordCooldown: WEAPONS.sword.cooldown,
-  axeDamage: WEAPONS.battle_axe.baseDamage,
-  hammerDamage: WEAPONS.war_hammer.baseDamage,
-  iframe: CONFIG.combat.playerHurtIframe,
-};
-
-/** The shipped numbers as they were before the melee pass. */
-const BASELINE = {
-  speed: 3,
-  swordDamage: 18,
-  swordCooldown: 0.44,
-  axeDamage: 32,
-  hammerDamage: 52,
-  iframe: 0,
-};
-
-/** @param {typeof CURRENT} v */
-function applyData(v) {
-  CLASSES.warrior.speed = v.speed;
-  WEAPONS.sword.baseDamage = v.swordDamage;
-  WEAPONS.sword.cooldown = v.swordCooldown;
-  WEAPONS.battle_axe.baseDamage = v.axeDamage;
-  WEAPONS.war_hammer.baseDamage = v.hammerDamage;
-  CONFIG.combat.playerHurtIframe = v.iframe;
-}
-
-/* ============================================================
    Unit-level checks on the mercy window itself
    ============================================================ */
 
@@ -425,58 +389,23 @@ check('melee damage pays for the range it gives up', () => {
    ============================================================ */
 
 console.log('\n  late arena: late wave recipe (4/6/elite 3), floor-2 scaling, no invincibility cheat');
-console.log('  class      mercy window   avg time   cleared   survived   hp left   damage taken');
+console.log('  class      avg time   cleared   survived   hp left   damage taken');
 
 /** @type {Record<string, ReturnType<typeof benchmark>>} */
-const before = {};
-/** @type {Record<string, ReturnType<typeof benchmark>>} */
-const after = {};
-
-applyData(BASELINE);
+const results = {};
 for (const cfg of CLASSES_TO_TEST) {
-  before[cfg.classId] = benchmark(cfg);
-  const r = before[cfg.classId];
+  results[cfg.classId] = benchmark(cfg);
+  const r = results[cfg.classId];
   console.log(
-    `  ${cfg.classId.padEnd(10)} off            `
+    `  ${cfg.classId.padEnd(10)}`
     + `${r.seconds.toFixed(1).padStart(6)}s   ${r.cleared}/${r.runs}       `
     + `${r.alive}/${r.runs}       `
     + `${(r.hpFraction * 100).toFixed(0).padStart(3)}%      ${r.damageTaken.toFixed(0)}`,
   );
 }
 
-applyData(CURRENT);
-for (const cfg of CLASSES_TO_TEST) {
-  after[cfg.classId] = benchmark(cfg);
-  const r = after[cfg.classId];
-  console.log(
-    `  ${cfg.classId.padEnd(10)} on             `
-    + `${r.seconds.toFixed(1).padStart(6)}s   ${r.cleared}/${r.runs}       `
-    + `${r.alive}/${r.runs}       `
-    + `${(r.hpFraction * 100).toFixed(0).padStart(3)}%      ${r.damageTaken.toFixed(0)}`,
-  );
-}
-
-check('the mercy window is what keeps the warrior alive', () => {
-  const now = after.warrior;
-  const was = before.warrior;
-  assert(
-    now.alive > was.alive,
-    `the warrior must finish more arenas on his feet (${now.alive}/${now.runs} vs ${was.alive}/${was.runs})`,
-  );
-  assert(
-    now.cleared > was.cleared,
-    `the warrior must clear more late arenas (${now.cleared}/${now.runs} vs ${was.cleared}/${was.runs})`,
-  );
-  assert(
-    now.damageTaken < was.damageTaken,
-    `the warrior must take less damage (${now.damageTaken.toFixed(0)} vs ${was.damageTaken.toFixed(0)})`,
-  );
-});
-
-check('the warrior is no longer the class that dies first', () => {
-  const warrior = after.warrior;
-  // Delivered by this pass: the melee class finishes a late arena on its
-  // feet more often than not, where it used to die in four of five seeds.
+check('the warrior survives most late arenas', () => {
+  const warrior = results.warrior;
   assert(
     warrior.alive * 2 > warrior.runs,
     `the warrior must survive most late arenas (${warrior.alive}/${warrior.runs})`,
@@ -487,22 +416,18 @@ check('the warrior is no longer the class that dies first', () => {
   );
 });
 
-/* ------------------------------------------------------------
-   Honest gap report (printed, not asserted)
-   ------------------------------------------------------------ */
-
-const damageRatio = after.warrior.damageTaken / after.gunner.damageTaken;
-const timeRatio = after.warrior.seconds / after.gunner.seconds;
+const damageRatio = results.warrior.damageTaken / results.gunner.damageTaken;
+const timeRatio = results.warrior.seconds / results.gunner.seconds;
 
 console.log('');
-console.log('  still open:');
+console.log('  balance diagnostics:');
 console.log(
   `    the warrior takes ${damageRatio.toFixed(1)}x the gunner's damage and needs `
   + `${timeRatio.toFixed(1)}x the time to clear the same arena`,
 );
 console.log(
-  `    survival: warrior ${after.warrior.alive}/${after.warrior.runs}, `
-  + `mage ${after.mage.alive}/${after.mage.runs}, gunner ${after.gunner.alive}/${after.gunner.runs}`,
+  `    survival: warrior ${results.warrior.alive}/${results.warrior.runs}, `
+  + `mage ${results.mage.alive}/${results.mage.runs}, gunner ${results.gunner.alive}/${results.gunner.runs}`,
 );
 console.log(
   '    the bot never dashes and never disengages, so this is a lower bound for melee:',

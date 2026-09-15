@@ -324,6 +324,9 @@ export class Game {
     if (input.dashPressed && player.tryDash(input.move.x, input.move.y)) {
       this.particles.burst('dust', player.x, player.y, 10, { speed: 150 });
       this.bus.emit(EVENTS.SHAKE_REQUESTED, 2);
+      // Announced, not played: Game knows nothing about speakers, exactly as
+      // it knows nothing about the DOM.
+      this.bus.emit(EVENTS.DASHED, { player });
     }
 
     this.coordinator.update(dt, player, {
@@ -348,7 +351,7 @@ export class Game {
       else {
         // Dead entities still animate their death timer.
         enemy.tickCommon(dt);
-        if (enemy.deathTimer > 1.2) enemy.reapable = true;
+        if (enemy.deathTimer > CONFIG.room.enemyDeathDuration) enemy.reapable = true;
       }
     }
     this.registry.reap();
@@ -392,7 +395,7 @@ export class Game {
     this.camera.update(dt);
 
     // Death check: the player's own death must end the run exactly once.
-    if (!player.alive && player.deathTimer > 1.4) {
+    if (!player.alive && player.deathTimer > CONFIG.room.playerDeathDuration) {
       this.run.end('death', player);
     }
   }
@@ -450,6 +453,13 @@ export class Game {
     if (!rt) return null;
 
     if (interaction.kind === 'healing') {
+      // The altar grants its one-time upgrade when the player interacts with
+      // it. Applying the reward here (rather than only displaying its name in
+      // the overlay) keeps the healing room's gameplay effect authoritative in
+      // RoomController and makes the operation safe to repeat.
+      const bonus = rt.reward[0];
+      if (bonus) this.rooms.takeReward(this.player, bonus);
+
       // Route through the controller so the doors are opened as part of
       // marking the room consumed; setting the flag directly would leave a
       // sealed room sealed and trap the player.
@@ -484,8 +494,8 @@ export class Game {
    * @param {any} choice
    */
   takeReward(choice) {
-    if (!this.player) return;
-    this.rooms.takeReward(this.player, choice);
+    if (!this.player) return false;
+    return this.rooms.takeReward(this.player, choice);
   }
 
   /**

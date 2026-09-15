@@ -84,8 +84,10 @@ export class InputService {
       this.wheel += Math.sign(e.deltaY);
     };
 
-    // Losing focus must not leave keys "stuck down".
-    const onBlur = () => this._held.clear();
+    // Losing focus must not leave keys/buttons "stuck down". Clear edge
+    // flags too: a click/key press that happened during focus loss must not be
+    // replayed on the next simulation frame.
+    const onBlur = () => this.reset();
     const onContextMenu = (/** @type {MouseEvent} */ e) => e.preventDefault();
 
     window.addEventListener('keydown', onKeyDown);
@@ -129,6 +131,23 @@ export class InputService {
     this.clientCursor.y = clientY - rect.top;
     this.cursor.x = (this.clientCursor.x - offsetX) / scale;
     this.cursor.y = (this.clientCursor.y - offsetY) / scale;
+  }
+
+  /**
+   * Clear all held and per-frame input state.
+   *
+   * This is also used when the browser window loses focus. Browsers are not
+   * required to deliver keyup/mouseup events during Alt+Tab, so retaining the
+   * state would make movement or attacks continue after returning to the game.
+   */
+  reset() {
+    this._held.clear();
+    this._pressed.clear();
+    this._released.clear();
+    this.mouseDown = false;
+    this.mousePressed = false;
+    this.mouseReleased = false;
+    this.wheel = 0;
   }
 
   /**

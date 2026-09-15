@@ -53,6 +53,8 @@ export class SceneRenderer {
    * @param {import('./decals.js').DecalLayer} [scene.decals]
    * @param {Array<any>} scene.hazards
    * @param {Array<any>} scene.ultimateVisuals
+   * @param {import('../core/GameLoop.js').GameLoop} [scene.loop]
+   * @param {import('../audio/AudioSystem.js').AudioSystem} [scene.audio]
    * @param {import('../rendering/textEffects.js').ScreenFlashSystem} scene.screenFlash
    * @param {{x: number, y: number}} scene.aimWorld
    * @param {boolean} scene.showReticle
@@ -183,9 +185,23 @@ export class SceneRenderer {
     const hazards = scene.hazards?.length ?? 0;
     const texts = scene.floatingText?.texts?.length ?? 0;
     const decals = scene.decals?.count ?? 0;
+    const droppedSimulationTime = scene.loop?.droppedSimulationTime ?? 0;
+    // Audio is reported as live voices against the dropped count: if voices
+    // sits at the ceiling and dropped climbs, the mixer is the thing under
+    // pressure and that is visible here rather than guessed at. `M` is the
+    // music state, so a track that failed to load is visible too.
+    const audio = scene.audio;
+    const music = audio?.music;
+    const musicText = music
+      ? `M ${music.playing ? 'on' : 'off'}${music.stats?.errors ? `!${music.stats.errors}` : ''}  `
+      : '';
+    const audioText = audio
+      ? `A ${audio.stats?.voices ?? 0} (-${audio.stats?.dropped ?? 0})  ${musicText}`
+      : '';
     ctx.fillText(
       `FPS ${this.render.fps.toFixed(0)}  P ${particles} (-${dropped})  ` +
-      `X ${projectiles}  H ${hazards}  T ${texts}  D ${decals}`,
+      `X ${projectiles}  H ${hazards}  T ${texts}  D ${decals}  ` +
+      `${audioText}SIM-DROP ${droppedSimulationTime.toFixed(2)}s`,
       10, CONFIG.view.height - 12,
     );
     ctx.restore();

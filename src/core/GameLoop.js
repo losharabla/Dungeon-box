@@ -30,6 +30,8 @@ export class GameLoop {
     this.frameDelta = 0;
     /** Smoothed frames-per-second, for diagnostics. */
     this.fps = 60;
+    /** Simulated seconds discarded after hitting the per-frame step ceiling. */
+    this.droppedSimulationTime = 0;
     /**
      * When paused the accumulator stops advancing, so a pause never
      * produces a burst of catch-up steps on resume.
@@ -97,8 +99,12 @@ export class GameLoop {
       this.elapsed += step;
       steps++;
     }
-    // If we hit the step ceiling, discard the backlog rather than spiralling.
-    if (steps === CONFIG.loop.maxStepsPerFrame) this._accumulator = 0;
+    // If we hit the step ceiling, discard the backlog rather than spiralling,
+    // but keep track of the lost simulation time for diagnostics.
+    if (steps === CONFIG.loop.maxStepsPerFrame && this._accumulator > 0) {
+      this.droppedSimulationTime += this._accumulator;
+      this._accumulator = 0;
+    }
 
     const alpha = step > 0 ? this._accumulator / step : 0;
     this.onRender(alpha, delta);

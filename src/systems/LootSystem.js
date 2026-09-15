@@ -39,6 +39,28 @@ export class LootSystem {
   }
 
   /**
+   * Drop the weapon the player is already holding from a roll pool.
+   *
+   * Offering it was a trap, not a choice: the shop charged 50 gold and the
+   * reward consumed itself for an item the player owns, and neither screen
+   * said so. Measured before the fix: ~29% of shop weapon offers and ~12% of
+   * arena weapon offers were the equipped weapon.
+   *
+   * If the filter would empty the pool (a class whose only weapon is the one
+   * it starts with) the unfiltered pool is kept, because a duplicate is still
+   * better than no offer at all.
+   *
+   * @param {string[]} ids
+   * @param {string|null} excludeId
+   * @returns {string[]}
+   */
+  static withoutEquipped(ids, excludeId) {
+    if (!excludeId || ids.length <= 1) return ids;
+    const filtered = ids.filter((id) => id !== excludeId);
+    return filtered.length > 0 ? filtered : ids;
+  }
+
+  /**
    * Roll one arena reward (design doc §15).
    *
    * The composition is deliberate: a legendary weapon is rare, a normal
@@ -48,12 +70,15 @@ export class LootSystem {
    * @param {string} classId
    * @param {number} floorIndex
    * @param {boolean} [guaranteeWeapon]
+   * @param {string|null} [excludeWeaponId] the weapon the player already holds
    * @returns {LootEntry[]} 1-2 choices
    */
-  rollArenaReward(classId, floorIndex, guaranteeWeapon = false) {
+  rollArenaReward(classId, floorIndex, guaranteeWeapon = false, excludeWeaponId = null) {
     /** @type {LootEntry[]} */
     const choices = [];
-    const { normal, legendary } = LootSystem.weaponsFor(classId);
+    const forClass = LootSystem.weaponsFor(classId);
+    const normal = LootSystem.withoutEquipped(forClass.normal, excludeWeaponId);
+    const legendary = LootSystem.withoutEquipped(forClass.legendary, excludeWeaponId);
 
     const legendaryChance = 0.04 + floorIndex * 0.03;
     const weaponChance = guaranteeWeapon ? 1 : 0.42;
@@ -101,12 +126,15 @@ export class LootSystem {
    *
    * @param {string} classId
    * @param {number} floorIndex
+   * @param {string|null} [excludeWeaponId] the weapon the player already holds
    * @returns {LootEntry[]}
    */
-  buildShopStock(classId, floorIndex) {
+  buildShopStock(classId, floorIndex, excludeWeaponId = null) {
     /** @type {LootEntry[]} */
     const stock = [];
-    const { normal, legendary } = LootSystem.weaponsFor(classId);
+    const forClass = LootSystem.weaponsFor(classId);
+    const normal = LootSystem.withoutEquipped(forClass.normal, excludeWeaponId);
+    const legendary = LootSystem.withoutEquipped(forClass.legendary, excludeWeaponId);
 
     // One weapon offer, occasionally legendary at a steep price.
     const wantLegendary = legendary.length > 0 && rng.chance(0.12 + floorIndex * 0.04);
@@ -169,10 +197,13 @@ export class LootSystem {
    *
    * @param {string} classId
    * @param {boolean} [elite] the boss was taken with its elite guard
+   * @param {string|null} [excludeWeaponId] the weapon the player already holds
    * @returns {LootEntry[]} 2 choices
    */
-  rollBossReward(classId, elite = false) {
-    const { normal, legendary } = LootSystem.weaponsFor(classId);
+  rollBossReward(classId, elite = false, excludeWeaponId = null) {
+    const forClass = LootSystem.weaponsFor(classId);
+    const normal = LootSystem.withoutEquipped(forClass.normal, excludeWeaponId);
+    const legendary = LootSystem.withoutEquipped(forClass.legendary, excludeWeaponId);
     /** @type {LootEntry[]} */
     const choices = [];
 

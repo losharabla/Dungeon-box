@@ -133,6 +133,8 @@ export const EVENTS = {
   PLAYER_HEALED: 'combat:playerHealed',
   ATTACK_PERFORMED: 'combat:attackPerformed',
   STATUS_APPLIED: 'combat:statusApplied',
+  /** A dash burst started. Presentation-only: audio, trails, diagnostics. */
+  DASHED: 'combat:dashed',
 
   // --- economy / progression ---
   GOLD_CHANGED: 'economy:goldChanged',

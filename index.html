@@ -18,7 +18,11 @@
       <div class="menu-buttons">
         <button class="btn btn-primary" data-action="goto" data-target="character_select">Начать забег</button>
         <button class="btn" data-action="show-help">Управление</button>
+        <button class="btn" data-action="toggle-settings" data-target="settings-menu">Звук</button>
       </div>
+      <!-- Mixer controls are built by UIManager, so the menu and the pause
+           screen can never drift apart. -->
+      <div class="settings-block" id="settings-menu" hidden></div>
       <div class="help-block" hidden>
         <p><b>W A S D</b> — движение</p>
         <p><b>Мышь</b> — прицел</p>
@@ -137,6 +141,7 @@
     <div class="overlay" id="overlay-pause" hidden>
       <div class="panel">
         <h2 class="screen-title">Пауза</h2>
+        <div class="settings-block" id="settings-pause"></div>
         <div class="menu-buttons">
           <button class="btn btn-primary" data-action="resume">Продолжить</button>
           <button class="btn" data-action="abandon-run">Покинуть забег</button>

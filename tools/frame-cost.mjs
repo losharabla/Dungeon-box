@@ -39,6 +39,7 @@ globalThis.window ??= { devicePixelRatio: 1, addEventListener() {}, removeEventL
 const { Game } = await import('../src/game/Game.js');
 const { SceneRenderer } = await import('../src/rendering/SceneRenderer.js');
 const { RenderSystem } = await import('../src/rendering/RenderSystem.js');
+const { getWeapon } = await import('../src/data/weapons.js');
 
 /**
  * Per-frame ceilings for the busy arena, the scene a player actually fights
@@ -47,6 +48,26 @@ const { RenderSystem } = await import('../src/rendering/RenderSystem.js');
  */
 const BUDGETS = {
   'busy arena (many enemies)': { radial: 15, linear: 25 },
+  /**
+   * The Staff of the Void pierces every body in its path and detonates on half
+   * of them, so it lands ~13x the hits of a normal weapon and used to multiply
+   * everything downstream: labels, impact bursts and draw calls.
+   *
+   * These ceilings are what the *fixed* build measures (`tools/perf-profile.mjs`
+   * reports the same scene), with headroom for a different combat roll. If a
+   * future change reintroduces one effect per hit, at least one of them trips.
+   */
+  'void staff (piercing pack)': { fillText: 60, arc: 600, save: 420 },
+};
+
+/**
+ * Counts that are not context operations but bound the same thing: how many
+ * particles a frame is asked to carry, and how hard the emission budget is
+ * being hit. `peakDropped` is the honest one - a build that blows the budget
+ * is silently dropping effects the player was promised.
+ */
+const WORK_BUDGETS = {
+  'void staff (piercing pack)': { particles: 420, peakDropped: 160 },
 };
 
 /**
@@ -60,6 +81,7 @@ const AREA_BUDGETS = {
   'empty start room': 10,
   'busy arena (many enemies)': 14,
   'boss fight (golem)': 14,
+  'void staff (piercing pack)': 14,
 };
 
 const stats = {
@@ -67,7 +89,6 @@ const stats = {
   arc: 0, fill: 0, fillRect: 0, stroke: 0, clip: 0, blit: 0,
   painted: 0, path: 0,
 };
-
 /** A context that records into nowhere - used by offscreen bake canvases. */
 function makeSilentContext() {
   const grad = { addColorStop() {} };
@@ -167,7 +188,14 @@ function makeRecorder() {
  * One scene: run the simulation for a while, then draw two frames and report
  * the operation counts of the second (steady state).
  */
-function measure(label, setup) {
+/**
+ * One scene: run the simulation for a while, then draw two frames and report
+ * the operation counts of the second (steady state).
+ * @param {string} label
+ * @param {(game: any) => void} setup
+ * @param {{classId?: string, ultimateId?: string, weaponId?: string}} [opts]
+ */
+function measure(label, setup, opts = {}) {
   const bus = new EventBus();
   const game = new Game({
     bus,
@@ -177,7 +205,8 @@ function measure(label, setup) {
       onPlayerDeath() {}, onNotice() {},
     },
   });
-  game.startRun('gunner', 'ricochet', 99);
+  game.startRun(opts.classId ?? 'gunner', opts.ultimateId ?? 'ricochet', 99);
+  if (opts.weaponId) game.getPlayer().equip(getWeapon(opts.weaponId));
   setup(game);
 
   // Simulate long enough for the scene to reach steady state (projectiles,
@@ -224,6 +253,7 @@ function measure(label, setup) {
     arc: stats.arc - before.arc,
     fill: stats.fill - before.fill,
     stroke: stats.stroke - before.stroke,
+    fillText: stats.fillText - before.fillText,
     clip: stats.clip - before.clip,
     blit: stats.blit - before.blit,
     overdraw: (stats.painted - before.painted) / (CONFIG.view.width * CONFIG.view.height),
@@ -238,12 +268,16 @@ function measure(label, setup) {
     ` arc ${String(frameStats.arc).padStart(4)}` +
     ` fill ${String(frameStats.fill).padStart(4)}` +
     ` stroke ${String(frameStats.stroke).padStart(4)}` +
+    ` fillText ${String(frameStats.fillText).padStart(4)}` +
     ` clip ${String(frameStats.clip).padStart(3)}` +
     ` blit ${String(frameStats.blit).padStart(2)}` +
     ` | overdraw ${frameStats.overdraw.toFixed(1)}x` +
     ` | part ${String(game.particles.count).padStart(3)}` +
+    ` (-${String(game.particles.peakDropped).padStart(3)})` +
     ` proj ${String(game.projectiles.projectiles.length).padStart(2)}` +
-    ` en ${game.registry.enemies.filter((e) => e.alive).length}`,
+    ` en ${game.registry.enemies.filter((e) => e.alive).length}` +
+    ` lbl ${String(game.floatingText.texts.length).padStart(3)}` +
+    ` (merged ${game.floatingText.merged})`,
   );
 }
 
@@ -268,6 +302,31 @@ measure('busy arena (many enemies)', (game) => {
 measure('boss fight (golem)', (game) => {
   game.run.enterNode(game.run.plan.bossId, game.getPlayer());
 });
+
+/**
+ * The exotic-weapon case: a piercing shot that detonates inside a packed
+ * crowd. This is the scene that regressed when every hit produced its own
+ * damage label and its own full impact burst, so it is measured explicitly.
+ */
+measure('void staff (piercing pack)', (game) => {
+  const rt = game.rooms.runtime;
+  rt.cleared = true;
+  const p = game.getPlayer();
+  const types = ['goblin', 'skeleton', 'slime', 'orc', 'enemy_mage'];
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 4; c++) {
+      const enemy = game.spawner.spawnEnemy(
+        types[(r * 4 + c) % types.length],
+        p.x + 150 + c * 46,
+        p.y - 69 + r * 46,
+      );
+      // Target dummies: the crowd must survive to be hit again next volley,
+      // otherwise the scene measures an empty room after two shots.
+      enemy.hp = 100000;
+      enemy.maxHp = 100000;
+    }
+  }
+}, { classId: 'mage', ultimateId: 'meteor', weaponId: 'staff_of_the_void' });
 
 /* ---------- baked layers ---------- */
 
@@ -314,14 +373,14 @@ if (bakeFailures === 0) {
 console.log('');
 
 let failures = 0;
-for (const { label, stats: s } of measured) {
+for (const { label, stats: s, game } of measured) {
   const budget = BUDGETS[label];
   if (budget) {
     for (const [op, max] of Object.entries(budget)) {
       try {
         assert.ok(
           s[op] <= max,
-          `${label}: ${op} gradients per frame ${s[op]} exceeds budget ${max}`,
+          `${label}: ${op} per frame ${s[op]} exceeds budget ${max}`,
         );
         console.log(`  PASS  ${label}: ${op} ${s[op]} <= ${max}`);
       } catch (err) {
@@ -341,6 +400,26 @@ for (const { label, stats: s } of measured) {
     } catch (err) {
       failures++;
       console.log(`  FAIL  ${err.message}`);
+    }
+  }
+
+  const work = WORK_BUDGETS[label];
+  if (work) {
+    const actual = {
+      particles: game.particles.count,
+      peakDropped: game.particles.peakDropped,
+    };
+    for (const [key, max] of Object.entries(work)) {
+      try {
+        assert.ok(
+          actual[key] <= max,
+          `${label}: ${key} ${actual[key]} exceeds budget ${max}`,
+        );
+        console.log(`  PASS  ${label}: ${key} ${actual[key]} <= ${max}`);
+      } catch (err) {
+        failures++;
+        console.log(`  FAIL  ${err.message}`);
+      }
     }
   }
 }

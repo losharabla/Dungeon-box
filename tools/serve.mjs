@@ -45,6 +45,15 @@ const CONTENT_TYPES = {
   '.ico': 'image/x-icon',
   '.png': 'image/png',
   '.txt': 'text/plain; charset=utf-8',
+  // Music. Without a real audio type the browser is free to refuse the stream
+  // rather than sniff it, and `<audio>` would silently never start.
+  '.mp3': 'audio/mpeg',
+  '.ogg': 'audio/ogg',
+  '.oga': 'audio/ogg',
+  '.m4a': 'audio/mp4',
+  '.wav': 'audio/wav',
+  '.webm': 'audio/webm',
+  '.flac': 'audio/flac',
 };
 
 const USAGE = `
@@ -83,6 +92,44 @@ function parseArgs(argv) {
   return opts;
 }
 
+/**
+ * Parse a single-range `Range:` request header.
+ *
+ * Only the one form a media element actually sends is supported
+ * (`bytes=start-`, `bytes=start-end`, `bytes=-suffix`); anything else returns
+ * null, and the caller answers with the whole file, which is always legal.
+ *
+ * @param {string|undefined} header
+ * @param {number} size
+ * @returns {{start: number, end: number}|null}
+ */
+function parseRange(header, size) {
+  if (!header) return null;
+  const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+  if (!match) return null;
+
+  const [, rawStart, rawEnd] = match;
+  if (rawStart === '' && rawEnd === '') return null;
+
+  let start;
+  let end;
+  if (rawStart === '') {
+    // `bytes=-N`: the last N bytes.
+    const suffix = Number(rawEnd);
+    if (!Number.isFinite(suffix) || suffix <= 0) return null;
+    start = Math.max(0, size - suffix);
+    end = size - 1;
+  } else {
+    start = Number(rawStart);
+    end = rawEnd === '' ? size - 1 : Number(rawEnd);
+    if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+    end = Math.min(end, size - 1);
+  }
+
+  if (start > end || start >= size) return null;
+  return { start, end };
+}
+
 /** The request handler: static files from ROOT, and nothing outside it. */
 function createServer() {
   return http.createServer((req, res) => {
@@ -100,19 +147,53 @@ function createServer() {
       return;
     }
 
-    fs.readFile(resolved, (err, data) => {
-      if (err) {
+    fs.stat(resolved, (statErr, stat) => {
+      if (statErr || !stat.isFile()) {
         res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
         res.end(`404 Not Found: ${url}`);
         return;
       }
+
       const type = CONTENT_TYPES[path.extname(resolved)] ?? 'application/octet-stream';
+      const range = req.method === 'HEAD' ? null : parseRange(req.headers.range, stat.size);
+
+      // Music is streamed, not buffered: a 3 MB track read into memory on
+      // every request would be pointless work for a file the browser may only
+      // ever read the first second of.
+      if (range) {
+        res.writeHead(206, {
+          'Content-Type': type,
+          'Content-Length': range.end - range.start + 1,
+          'Content-Range': `bytes ${range.start}-${range.end}/${stat.size}`,
+          // Media elements probe with Range to learn whether the file is
+          // seekable; advertising it is what makes looping reliable.
+          'Accept-Ranges': 'bytes',
+          'Cache-Control': 'no-store',
+        });
+        if (req.method === 'HEAD') {
+          res.end();
+          return;
+        }
+        fs.createReadStream(resolved, { start: range.start, end: range.end })
+          .on('error', () => res.destroy())
+          .pipe(res);
+        return;
+      }
+
       res.writeHead(200, {
         'Content-Type': type,
+        'Content-Length': stat.size,
+        'Accept-Ranges': 'bytes',
         // The game is edited live during development; never cache.
         'Cache-Control': 'no-store',
       });
-      res.end(data);
+      if (req.method === 'HEAD') {
+        res.end();
+        return;
+      }
+      fs.createReadStream(resolved)
+        .on('error', () => res.destroy())
+        .pipe(res);
     });
   });
 }

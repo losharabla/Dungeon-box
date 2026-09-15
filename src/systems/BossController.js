@@ -11,7 +11,6 @@
 
 import { EVENTS } from '../core/EventBus.js';
 import { CONFIG } from '../core/Config.js';
-import { getEnemy } from '../data/enemies.js';
 
 export class BossController {
   /**
@@ -211,12 +210,12 @@ export class BossController {
   }
 
   /**
-   * Raise smaller golems (§12).
-   * @param {import('../entities/Boss.js').PendingAttack} p
-   * @param {number} count
-   */
-  /**
    * Raise smaller minions (§12).
+   *
+   * The design document calls these "golems" but the content set has no golem
+   * enemy, so they are orcs: the tallest, toughest body available. The comment
+   * is worth keeping honest because it is the only place that records the
+   * deviation.
    *
    * Summoning is capped: without a limit the boss re-summons on every
    * cooldown and the arena fills with hundreds of minions, which is both
@@ -458,8 +457,6 @@ export class BossController {
       life: 0.5, maxLife: 0.5, color: '#b070ff', damage: 0,
     }));
     this.combat.particles.burst('magic', boss.x, boss.y, 24, { speed: 340 });
-
-    // Blink out to a random nearby point afterwards.
     void p;
   }
 
@@ -558,10 +555,12 @@ export class BossController {
         const d2 = (player.x - h.x) ** 2 + (player.y - h.y) ** 2;
         if (d2 <= h.radius * h.radius) {
           if (h.damagePerSecond) {
-            // Continuous damage: apply a per-frame slice.
-            this.combat.applyHit(player, {
-              damage: h.damage * dt, knockback: 0, source: 'hazard',
-            }, h.owner ?? null);
+            // Continuous damage goes through the DoT channel, not through
+            // `applyHit`: as a "blow" it was refused by the player's mercy
+            // window, floored to 1 point by the armour rule, and — worst of
+            // all — it kept that window open, making the player invulnerable
+            // to everything else while standing in fire.
+            this.combat.applyDamageOverTime(player, h.damage, dt, h.owner ?? null);
           } else if (!h.damageApplied) {
             h.damageApplied = true;
             this.combat.applyHit(player, {
@@ -653,5 +652,3 @@ function makeHazard(spec) {
     owner: spec.owner,
   };
 }
-
-void getEnemy;

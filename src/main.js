@@ -22,8 +22,12 @@ import { Game } from './game/Game.js';
 import { RenderSystem, Camera } from './rendering/RenderSystem.js';
 import { SceneRenderer } from './rendering/SceneRenderer.js';
 import { UIManager } from './ui/UIManager.js';
+import { AudioSystem } from './audio/AudioSystem.js';
+import { bindGameAudio } from './audio/audioBindings.js';
+import { createAudioControls } from './audio/audioControls.js';
 import { getBoss } from './data/bosses.js';
 import { roomTypeLabel } from './data/roomTypes.js';
+import { CONFIG } from './core/Config.js';
 
 /* ============================================================
    Boot
@@ -38,6 +42,16 @@ const input = new InputService(canvas);
 const camera = new Camera();
 const render = new RenderSystem(canvas, camera);
 const sceneRenderer = new SceneRenderer(render);
+
+/**
+ * Procedural mixer. Constructing it costs nothing — the AudioContext is not
+ * created until the first user gesture (see `AudioSystem.unlock`), which is
+ * both what the browser's autoplay policy requires and what keeps a
+ * never-touched menu free of audio resources.
+ */
+const audio = new AudioSystem();
+audio.attachUnlockHandlers();
+bindGameAudio({ audio, bus });
 
 /**
  * Which room overlay is currently showing, so the engine knows to freeze
@@ -75,7 +89,7 @@ const ui = new UIManager({
     state.transition('playing');
     ui.showScreen('playing');
     ui.showTransition(`ЭТАЖ ${game.run.floorIndex + 1}`);
-    transitionTimer = 1.4;
+    transitionTimer = CONFIG.ui.floorTransitionDuration;
   },
   resume: () => resumeFromPause(),
   abandonRun: () => {
@@ -109,6 +123,10 @@ const ui = new UIManager({
     closeOverlay();
   },
   selectCharacter: () => {},
+}, {
+  // Narrow adapter: read the mixer, change a level, mute, click. The UI never
+  // sees the audio engine itself.
+  audio: createAudioControls(audio),
 });
 
 /* ============================================================
@@ -138,7 +156,7 @@ const game = new Game({
 
     onBossSpawned: (boss) => {
       ui.showTransition(getBoss(boss.bossId).name);
-      transitionTimer = 2.0;
+      transitionTimer = CONFIG.ui.bossTransitionDuration;
     },
 
     onPlayerDeath: () => {
@@ -162,6 +180,10 @@ function startRun() {
   activeOverlay = null;
   pendingReward = [];
   pendingVictory = null;
+
+  // This runs inside a click handler, which is the one place a browser lets a
+  // suspended context start. The gesture listeners cover everything earlier.
+  void audio.unlock();
 
   game.startRun(classId, ultId);
   state.force('playing');
@@ -213,7 +235,7 @@ function resumeFromPause() {
 /** Show a short notice in the HUD. */
 function showNotice(text) {
   ui.setHint(text);
-  noticeTimer = 2.6;
+  noticeTimer = CONFIG.ui.noticeDuration;
 }
 
 /**
@@ -314,10 +336,13 @@ function updateParticleQuality(frameDelta) {
 
   if (veryLowFpsTime >= 2) {
     game.particles.density = 0.35;
+    audio.setQuality(0.5);
   } else if (lowFpsTime >= 2 && game.particles.density > 0.6) {
     game.particles.density = 0.6;
+    audio.setQuality(0.75);
   } else if (goodFpsTime >= 5) {
     game.particles.density = 1;
+    audio.setQuality(1);
   }
 }
 
@@ -463,6 +488,12 @@ function renderFrame(alpha, frameDelta) {
   render.fps = loop.fps;
   updateParticleQuality(frameDelta);
 
+  // The mixer prunes finished voices against the audio clock (one pass, no
+  // per-voice timers) and pans world sounds around the camera, so what is on
+  // screen and what is on the stereo field agree.
+  audio.update();
+  audio.setListener(camera.x, camera.y);
+
   // Animation clock runs even while the game is paused, which keeps the
   // menu characters and room runes alive.
   sceneRenderer.update(Math.min(frameDelta, 0.05));
@@ -496,10 +527,12 @@ function renderFrame(alpha, frameDelta) {
       projectiles: game.projectiles,
       particles: game.particles,
       floatingText: game.floatingText,
-       decals: game.decals,
+      decals: game.decals,
       hazards: game.bossController.hazards,
       ultimateVisuals: game.ultimates.visuals,
+      loop,
       screenFlash: game.screenFlash,
+      audio,
       aimWorld,
       showReticle: !activeOverlay,
     });
@@ -582,4 +615,4 @@ ui.showScreen('menu');
 loop.start();
 
 // Expose a minimal handle for debugging in the console.
-Object.assign(window, { __roguelike: { game, bus, state, render, ui, loop } });
+Object.assign(window, { __roguelike: { game, bus, state, render, ui, loop, audio } });

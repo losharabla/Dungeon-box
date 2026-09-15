@@ -16,6 +16,7 @@ import { getUpgrade } from '../data/upgrades.js';
 import { drawMage, drawGunner, drawWarrior } from '../rendering/characterRenderer.js';
 import { fmtInt, percent } from '../core/MathUtils.js';
 import { CONFIG } from '../core/Config.js';
+import { NULL_AUDIO_CONTROLS, UI_BACK, UI_CLICK } from '../audio/audioControls.js';
 
 /**
  * @typedef {object} UIIntents
@@ -32,12 +33,24 @@ import { CONFIG } from '../core/Config.js';
  * @property {(classId: string, ultId: string) => void} selectCharacter
  */
 
+/** Mixer rows, in the order they appear in both menus. */
+const AUDIO_ROWS = /** @type {const} */ ([
+  { key: 'master', label: 'Общая громкость' },
+  { key: 'music', label: 'Музыка' },
+  { key: 'effects', label: 'Эффекты' },
+]);
+
 export class UIManager {
   /**
    * @param {UIIntents} intents
+   * @param {object} [options]
+   * @param {import('../audio/audioControls.js').AudioControls} [options.audio]
+   *   mixer adapter; omitted in tests and headless runs, which then play nothing
    */
-  constructor(intents) {
+  constructor(intents, options = {}) {
     this.intents = intents;
+    /** Mixer surface. Narrow by design: four members, not the whole engine. */
+    this.audio = options.audio ?? NULL_AUDIO_CONTROLS;
     /** Currently focused screen name, for debugging and tests. */
     this.screen = 'menu';
     /** Selected class on the character-select screen. */
@@ -76,6 +89,8 @@ export class UIManager {
       victorySub: must('victory-sub'),
       nextFloorBtn: must('btn-next-floor'),
       errorBox: must('error-box'),
+      settingsMenu: must('settings-menu'),
+      settingsPause: must('settings-pause'),
     };
 
     for (const section of document.querySelectorAll('.screen')) {
@@ -84,6 +99,7 @@ export class UIManager {
     }
 
     this._buildCharacterSelect();
+    this._buildAudioControls();
     this._bindActions();
 
     /** Cached values so the HUD only touches the DOM when something changed. */
@@ -278,6 +294,112 @@ export class UIManager {
     this._cache.hint = text;
     this.el.hint.textContent = text;
     this.el.hint.hidden = !text;
+  }
+
+  /* ============================================================
+     Mixer controls
+     ============================================================ */
+
+  /**
+   * Build the mixer rows into both settings containers.
+   *
+   * The markup is generated instead of written twice in `index.html`, so the
+   * start menu and the pause screen cannot drift apart — the failure mode a
+   * hand-maintained second copy always eventually produces.
+   */
+  _buildAudioControls() {
+    for (const container of [this.el.settingsMenu, this.el.settingsPause]) {
+      if (!container) continue;
+      this._buildAudioControlsInto(container);
+    }
+    this.syncAudioControls();
+  }
+
+  /**
+   * @param {HTMLElement} container
+   */
+  _buildAudioControlsInto(container) {
+    container.innerHTML = '';
+
+    const mute = document.createElement('button');
+    mute.type = 'button';
+    mute.className = 'btn btn-small setting-mute';
+    mute.setAttribute('data-setting', 'mute');
+    mute.addEventListener('click', () => {
+      this.audio.setMuted(!this.audio.settings.muted);
+      this.syncAudioControls();
+      if (!this.audio.settings.muted) this.playUiSound(UI_CLICK);
+    });
+    container.appendChild(mute);
+
+    for (const row of AUDIO_ROWS) {
+      const line = document.createElement('div');
+      line.className = 'setting-row';
+
+      const label = document.createElement('span');
+      label.className = 'setting-label';
+      label.textContent = row.label;
+
+      const value = document.createElement('span');
+      value.className = 'setting-value';
+      value.setAttribute('data-setting', row.key);
+
+      const range = document.createElement('input');
+      range.type = 'range';
+      range.className = 'setting-range';
+      range.setAttribute('data-setting', row.key);
+      setRangeBounds(range);
+      range.addEventListener('input', () => {
+        this.audio.set(row.key, Number(range.value) / 100);
+        this.syncAudioControls();
+        // Audition the level on the slider the player is dragging, so the
+        // change is audible while it is being made.
+        if (row.key === 'effects') this.playUiSound(UI_CLICK);
+      });
+
+      line.appendChild(label);
+      line.appendChild(value);
+      line.appendChild(range);
+      container.appendChild(line);
+    }
+  }
+
+  /**
+   * Push the current mixer values into both control sets. Called after any
+   * change from either place, which is what keeps the two sliders in sync.
+   */
+  syncAudioControls() {
+    const settings = this.audio.settings;
+    for (const container of [this.el.settingsMenu, this.el.settingsPause]) {
+      if (!container) continue;
+      for (const range of container.querySelectorAll('.setting-range')) {
+        const key = /** @type {'master'|'music'|'effects'} */ (
+          range.getAttribute('data-setting')
+        );
+        const level = Number(settings[key] ?? 1);
+        range.value = String(Math.round(level * 100));
+      }
+      for (const value of container.querySelectorAll('.setting-value')) {
+        const key = /** @type {'master'|'music'|'effects'} */ (
+          value.getAttribute('data-setting')
+        );
+        value.textContent = `${Math.round(Number(settings[key] ?? 1) * 100)}%`;
+      }
+      for (const mute of container.querySelectorAll('.setting-mute')) {
+        const muted = settings.muted === true;
+        mute.textContent = muted ? 'Звук: выключен' : 'Звук: включён';
+        mute.classList.toggle('muted', muted);
+      }
+    }
+  }
+
+  /**
+   * Menu feedback. Silent before the first gesture and in a headless run,
+   * where the mixer adapter is the null object.
+   * @param {string} id
+   */
+  playUiSound(id) {
+    this.audio.play(id, { gain: 0.9 });
   }
 
   /* ============================================================
@@ -577,6 +699,13 @@ export class UIManager {
       const action = target.getAttribute?.('data-action');
       if (!action) return;
 
+      // Every menu action clicks. Controls that go *backwards* — leaving the
+      // run, returning to the main menu — get the lower cue instead, so the
+      // two directions are audibly different without a second sound system.
+      const destination = target.getAttribute('data-target');
+      const goingBack = action === 'abandon-run' || (action === 'goto' && destination === 'menu');
+      this.playUiSound(goingBack ? UI_BACK : UI_CLICK);
+
       switch (action) {
         case 'goto': {
           const dest = target.getAttribute('data-target');
@@ -586,6 +715,15 @@ export class UIManager {
         case 'show-help': {
           const help = document.querySelector('.help-block');
           if (help) /** @type {HTMLElement} */ (help).hidden = !/** @type {HTMLElement} */ (help).hidden;
+          break;
+        }
+        case 'toggle-settings': {
+          // The data attribute names the DOM id, so the same action works for
+          // any future settings panel without a second code path.
+          const name = target.getAttribute('data-target');
+          const panel = name ? document.getElementById(name) : null;
+          if (panel) panel.hidden = !panel.hidden;
+          if (panel && !panel.hidden) this.syncAudioControls();
           break;
         }
         case 'start-run': {
@@ -604,6 +742,19 @@ export class UIManager {
       }
     });
   }
+}
+
+/**
+ * Set the numeric bounds on a range input.
+ *
+ * Written through `setAttribute` rather than the properties so the same code
+ * path works against the minimal DOM the tests provide.
+ * @param {HTMLElement} range
+ */
+function setRangeBounds(range) {
+  range.setAttribute('min', '0');
+  range.setAttribute('max', '100');
+  range.setAttribute('step', '1');
 }
 
 /**

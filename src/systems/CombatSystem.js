@@ -38,6 +38,8 @@ const SHIELD_WEIGHT_DAMAGE = 24;
 const SHIELD_REGEN = 9;
 /** How long a shield stays broken once it is exhausted, in seconds. */
 const SHIELD_BREAK_DURATION = 3.2;
+/** Colour for damage-over-time labels, matching the burn tick colour. */
+const DOT_COLOR = '#ff8a3d';
 
 /**
  * @typedef {object} HitSpec
@@ -162,15 +164,26 @@ export class CombatSystem {
     // Only override the particle colour for critical hits; passing an
     // explicit `undefined` would clobber the preset's own colour.
     const hitParticleOverrides = result.crit ? { color: '#ff7a5a' } : {};
-    this.particles.burst(
-      isPlayerTarget ? 'blood' : 'spark',
-      target.x, target.y - target.radius * 0.5,
-      result.crit ? 12 : 7,
-      { speed: 170, overrides: hitParticleOverrides },
-    );
-    this.floatingText.add(
+    // Area damage arrives as one hit per body caught in the blast. Firing a
+    // full impact burst for each of them overshoots the particle step budget,
+    // which then drops two thirds of them: the effect looks thinner *and* every
+    // dropped particle was still work. Scaling by the caller's factor keeps a
+    // blast inside the budget instead of gambling on which sparks survive.
+    const vfx = spec.vfxScale ?? 1;
+    if (vfx > 0) {
+      this.particles.burst(
+        isPlayerTarget ? 'blood' : 'spark',
+        target.x, target.y - target.radius * 0.5,
+        (result.crit ? 12 : 7) * vfx,
+        { speed: 170, overrides: hitParticleOverrides },
+      );
+    }
+    // Damage labels aggregate: a pierce-and-explode weapon lands dozens of hits
+    // a second on the same body, and one glyph run per hit was the single
+    // largest per-frame drawing cost in the game.
+    this.floatingText.addDamage(
       target.x, target.y - target.radius - 10,
-      String(Math.round(applied)),
+      applied,
       {
         color: result.crit ? FloatingTextSystem.COLORS.crit : FloatingTextSystem.COLORS.damage,
         size: result.crit ? 22 : 16,
@@ -227,8 +240,14 @@ export class CombatSystem {
       // Falloff is measured at the target's near edge rather than its centre,
       // so a large body takes full damage where it actually overlaps.
       const scale = falloff >= 1 ? 1 : 1 - (surface / radius) * (1 - falloff);
-      // Blast damage ignores directional shields.
-      this.applyHit(e, { ...spec, damage: spec.damage * scale, ignoreShield: true }, source);
+      // Blast damage ignores directional shields, and emits a fraction of a
+      // direct hit's particles because one blast hits many bodies at once.
+      this.applyHit(e, {
+        ...spec,
+        damage: spec.damage * scale,
+        ignoreShield: true,
+        vfxScale: (spec.vfxScale ?? 1) * CONFIG.render.areaVfxScale,
+      }, source);
       hits++;
     }
     return hits;
@@ -417,7 +436,8 @@ export class CombatSystem {
     }
 
     if (player && applied > 0 && target.faction !== 'player') {
-      this.floatingText.add(target.x, target.y - target.radius - 10, '', { size: 0, life: 0.01 });
+      // (No spacer label here: `add` skips a zero-size text anyway, so the
+      // call was pure overhead on the hottest path in the game.)
     }
     void player;
   }
@@ -467,6 +487,73 @@ export class CombatSystem {
     }
   }
 
+  /* ============================================================
+     Damage over time
+     ============================================================ */
+
+  /**
+   * Apply continuous damage — a hazard the player is standing in.
+   *
+   * This deliberately does *not* go through `applyHit`, because `applyHit`
+   * models a discrete **blow**, and two of its rules are wrong for a burn:
+   *
+   *  * **The post-hit mercy window.** Every accepted tick opened a fresh
+   *    `playerHurtIframe`, so 0.4 s of the fire's damage came back as "МИМО",
+   *    and — far worse — the player was *continuously invulnerable* while
+   *    standing in it. Measured: a 40-damage boss slam did 0 damage to a
+   *    player standing in a fire wall. The fire was a god-mode button.
+   *  * **The flat armour floor.** `applyHit` clamps player damage to a minimum
+   *    of 1 (`Math.max(1, damage - armor)`) so armour can never make the player
+   *    immune to a real hit. A per-frame slice is a fraction of a point, so
+   *    that floor turned a 10.5 dps burn into exactly 1 damage per accepted
+   *    tick.
+   *
+   * Armour is described in-game as weakening each incoming *blow*, so it does
+   * not apply here either. The fraction is applied as-is, which is what makes
+   * the configured dps the dps the player actually takes.
+   *
+   * @param {import('../entities/Entity.js').Entity} target
+   * @param {number} dps damage per second
+   * @param {number} dt fixed step, seconds
+   * @param {any} [source]
+   * @returns {number} damage actually applied this step
+   */
+  applyDamageOverTime(target, dps, dt, source) {
+    if (!target || !target.alive) return 0;
+    if (!(dps > 0) || !(dt > 0)) return 0;
+    // The Invulnerability ultimate really is a ward, so it does stop fire.
+    if (target.status.has('invulnerable')) return 0;
+
+    const applied = target.takeDamage(dps * dt);
+    if (applied <= 0) return 0;
+
+    // Statistics count every step, so they match the health bar exactly.
+    if (target.faction === 'player') target.stats.damageTaken += applied;
+    else if (source && source.faction === 'player') source.stats.damageDealt += applied;
+
+    // Feedback is batched: the damage above is continuous, but the label,
+    // sound and shake arrive a few times a second instead of every frame.
+    target.dotDamage = (target.dotDamage ?? 0) + applied;
+    target.dotFeedbackTimer = (target.dotFeedbackTimer ?? 0) - dt;
+    if (target.dotFeedbackTimer <= 0) {
+      target.dotFeedbackTimer = CONFIG.combat.dotFeedbackInterval;
+      const chunk = target.dotDamage;
+      target.dotDamage = 0;
+      if (target.faction === 'player') {
+        this.bus.emit(EVENTS.PLAYER_DAMAGED, { amount: chunk });
+        this.bus.emit(EVENTS.SHAKE_REQUESTED, Math.min(4, 1 + chunk * 0.2));
+        this.floatingText.addDamage(target.x, target.y - target.radius - 12, chunk, {
+          color: DOT_COLOR, size: 14,
+        });
+      } else {
+        this.floatingText.addDamage(target.x, target.y - target.radius - 10, chunk, {
+          color: FloatingTextSystem.COLORS.damage, size: 14,
+        });
+      }
+    }
+    return applied;
+  }
+
   /**
    * @param {import('../entities/Entity.js').Entity} target
    * @param {string} text
@@ -474,7 +561,10 @@ export class CombatSystem {
    * @param {number} size
    */
   _showText(target, text, color, size) {
-    this.floatingText.add(target.x, target.y - target.radius - 12, text, { color, size });
+    // Repeated words refresh the label that is already on screen instead of
+    // stacking a copy per event: a blocked tick can arrive many times per
+    // frame, and "МИМО" sixty times a second is noise, not information.
+    this.floatingText.addNotice(target.x, target.y - target.radius - 12, text, { color, size });
   }
 
   /**
