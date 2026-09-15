@@ -748,13 +748,24 @@ if (!browser) {
 }
 
 // Fail early and precisely if the game is not being served.
-let reachable = false;
+let unreachable = '';
 try {
   const res = await fetch(URL_BASE, { method: 'GET' });
-  reachable = res.ok;
-} catch { reachable = false; }
-if (!reachable) {
-  fail(`nothing is serving ${URL_BASE}\n  start it first:  node tools/serve.mjs`);
+  if (!res.ok) unreachable = `HTTP ${res.status}`;
+} catch (err) {
+  unreachable = err?.cause?.message ?? err?.message ?? String(err);
+}
+if (unreachable) {
+  // The advice depends on where the game was meant to be: telling someone to
+  // start the dev server when they pointed the tool at a public URL is worse
+  // than saying nothing.
+  const local = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/i.test(URL_BASE);
+  fail(
+    `${URL_BASE} is not reachable (${unreachable})\n`
+    + (local
+      ? '  start it first:  node tools/serve.mjs'
+      : '  check the URL, or your connection to it'),
+  );
 }
 
 fs.mkdirSync(OUT_DIR, { recursive: true });
