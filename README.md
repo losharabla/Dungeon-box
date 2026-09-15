@@ -9,7 +9,7 @@ the repository is the original music track in `assets/music/`.
 **3 classes · 10 enemies · 3 bosses · 9 ultimates · 13 weapons · 4 room types · one run of choices**
 
 [![tests](https://github.com/losharabla/Dungeon-box/actions/workflows/ci.yml/badge.svg)](https://github.com/losharabla/Dungeon-box/actions/workflows/ci.yml)
-[![headless checks](https://img.shields.io/badge/headless%20checks-136%20in%20the%20fast%20gate-success.svg)](#tests)
+[![headless checks](https://img.shields.io/badge/headless%20checks-137%20in%20the%20fast%20gate-success.svg)](#tests)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen.svg)](package.json)
 [![node](https://img.shields.io/badge/node-%E2%89%A518-informational.svg)](package.json)
@@ -82,7 +82,7 @@ is in **[`INSTALL.md`](INSTALL.md)**.
 - [Content](#content-mvp-scope-32) — what ships, and the rules the art follows
 - [Procedural audio](#procedural-audio) · [Music](#music) — synthesis, voice budget, streaming
 - [Tests](#tests) — 140+ headless checks and what each suite is for
-- [Bugs found by these tests and fixed](#bugs-found-by-these-tests-and-fixed) — 23 of them, with measurements
+- [Bugs found by these tests and fixed](#bugs-found-by-these-tests-and-fixed) — 24 of them, with measurements
 - [Combat additions beyond the design document](#combat-additions-beyond-the-design-document)
 - [Melee balance pass](#melee-balance-pass) — what "the warrior is too hard" measured as
 - [Deliberate scope choices](#deliberate-scope-choices) · [Extending the game](#extending-the-game)
@@ -528,7 +528,7 @@ Everything below was measured on this machine, not estimated:
   overdraw, boss room 8.2x, and no radial or linear gradients in a steady frame.
 
 ```
-  44/44 unit + regression checks passed
+  45/45 unit + regression checks passed
  12/12 DOM and boot checks passed — including the boss → victory → next-floor UI path
  8/8  HUD alignment checks passed
  6/6  camera framing checks passed
@@ -748,6 +748,19 @@ Each of these is now covered by a named regression test:
     `tools/hitbox-audit.mjs` renders every entity through the real renderer, tracks the full
     affine transform to recover the painted silhouette, separates the body from detached
     props, and fails when the box does not contain the body.
+24. **The final boss's blink teleported it to the wall.** Reported from play: the
+    Executioner's teleport attack was broken. It picked a spot around the player and accepted
+    it if `overlapsAny` said the circle was clear — but that only asks whether the circle
+    *touches a wall*. The walls are solid rectangles standing just **outside** the floor, so a
+    point beyond one touches nothing at all and passed every time. Measured: **18% of blinks
+    from open ground and 49% from beside a wall landed outside the arena**, where the
+    per-frame safety clamp then dragged the boss back onto the masonry. The attack read as
+    "the boss teleports to the wall", not "to you", and a boss pinned to a corner is the worst
+    place to fight one. `CollisionWorld` now knows the room's *floor* as well as its solids and
+    answers the question callers actually mean — `isFreeSpot` — which is both checks; the
+    assassin's blink had the same latent flaw and uses it too. The regression test drives the
+    real attack and then a real frame, and fails with 36 of 206 blinks escaping if the old
+    check is restored.
 
 ### Combat additions beyond the design document
 

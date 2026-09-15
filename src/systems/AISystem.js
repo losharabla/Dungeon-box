@@ -336,18 +336,31 @@ const BEHAVIOURS = {
     // Blink toward the player when far away and off cooldown.
     if (d > 260 && enemy.ai.stealthTimer <= 0) {
       const a = Math.random() * Math.PI * 2;
-      const place = { x: player.x + Math.cos(a) * 70, y: player.y + Math.sin(a) * 70 };
-      const safe = ctx.collisionWorld.overlapsAny({ x: place.x, y: place.y, radius: enemy.radius })
-        ? { x: player.x + Math.cos(a) * 110, y: player.y + Math.sin(a) * 110 }
-        : place;
-      // Smoke out, smoke in.
-      ctx.combat.particles.burst('smoke', enemy.x, enemy.y, 10, { speed: 80 });
-      enemy.x = safe.x;
-      enemy.y = safe.y;
-      ctx.combat.particles.burst('smoke', enemy.x, enemy.y, 10, { speed: 80 });
-      enemy.ai.stealthTimer = 3.2 + Math.random() * 2;
-      enemy.ai.attackTimer = 0.35;
-      return { vx: 0, vy: 0, attack: false };
+      // Only land where an enemy of this size fits *inside the room*. The
+      // old check asked `overlapsAny`, which accepts any point that is not
+      // touching a wall - including one beyond it, outside the arena.
+      let spot = null;
+      for (const dist of [70, 100, 130]) {
+        const candidate = {
+          x: player.x + Math.cos(a) * dist,
+          y: player.y + Math.sin(a) * dist,
+          radius: enemy.radius,
+        };
+        if (ctx.collisionWorld.isFreeSpot(candidate)) {
+          spot = candidate;
+          break;
+        }
+      }
+      if (spot) {
+        // Smoke out, smoke in.
+        ctx.combat.particles.burst('smoke', enemy.x, enemy.y, 10, { speed: 80 });
+        enemy.x = spot.x;
+        enemy.y = spot.y;
+        ctx.combat.particles.burst('smoke', enemy.x, enemy.y, 10, { speed: 80 });
+        enemy.ai.stealthTimer = 3.2 + Math.random() * 2;
+        enemy.ai.attackTimer = 0.35;
+        return { vx: 0, vy: 0, attack: false };
+      }
     }
 
     // Cloak while closing distance.

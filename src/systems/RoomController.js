@@ -138,7 +138,7 @@ export class RoomController {
     this.projectiles.clear();
     this.particles.clear();
     this.bossController.clear();
-    this.collisionWorld.setRects(room.getCollisionRects());
+    this.collisionWorld.setRects(room.getCollisionRects(), room.bounds);
 
     // Place the player at the room's entry point.
     player.x = room.entry.x;

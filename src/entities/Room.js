@@ -319,14 +319,27 @@ export class CollisionWorld {
   constructor() {
     /** @type {Rect[]} */
     this.rects = [];
+    /**
+     * The room's floor rectangle.
+     *
+     * `rects` alone cannot answer "is this point inside the room": the walls
+     * are *solid* rectangles standing just outside the floor, so a point
+     * beyond a wall touches nothing and passes every overlap test. Anything
+     * that places an entity at an arbitrary coordinate rather than nudging it
+     * needs both halves of the world.
+     * @type {Rect|null}
+     */
+    this.bounds = null;
   }
 
   /**
    * Replace the geometry set (called when the player changes room).
    * @param {Rect[]} rects
+   * @param {Rect|null} [bounds] the floor the rects stand around
    */
-  setRects(rects) {
+  setRects(rects, bounds = null) {
     this.rects = rects;
+    this.bounds = bounds;
   }
 
   /** @param {Rect[]} rects */
@@ -336,6 +349,35 @@ export class CollisionWorld {
 
   clear() {
     this.rects = [];
+    this.bounds = null;
+  }
+
+  /**
+   * Whether a circle lies wholly inside the room's floor.
+   *
+   * Without known bounds this answers `true`: an empty world contains
+   * everything, and refusing every placement would be a worse failure than
+   * allowing one.
+   * @param {{x: number, y: number, radius: number}} circle
+   * @returns {boolean}
+   */
+  containsCircle(circle) {
+    const b = this.bounds;
+    if (!b) return true;
+    return circle.x - circle.radius >= b.x
+      && circle.y - circle.radius >= b.y
+      && circle.x + circle.radius <= b.x + b.w
+      && circle.y + circle.radius <= b.y + b.h;
+  }
+
+  /**
+   * The question every teleport actually means to ask: may an entity of this
+   * size stand here? Inside the floor *and* clear of solids.
+   * @param {{x: number, y: number, radius: number}} circle
+   * @returns {boolean}
+   */
+  isFreeSpot(circle) {
+    return this.containsCircle(circle) && !this.overlapsAny(circle);
   }
 
   /**

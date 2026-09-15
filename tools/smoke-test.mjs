@@ -867,6 +867,118 @@ await check('REGRESSION: BossController teleport has collision access', async ()
   );
 });
 
+await check('REGRESSION: a blink lands inside the room, not merely clear of walls', async () => {
+  // Reported problem: the final boss's blink attack was broken - it put the
+  // Executioner somewhere strange instead of beside the player.
+  //
+  // The placement check asked `overlapsAny`, which answers "does this circle
+  // touch a wall". The walls stand just *outside* the floor, so a point beyond
+  // one touches nothing and passed every time. Measured before the fix: 18% of
+  // blinks from open ground and 49% from beside a wall landed outside the
+  // arena, where the per-frame safety clamp then dragged the boss back onto the
+  // masonry. The attack read as "the boss teleports to the wall", not "to you".
+  //
+  // The test drives the real attack and then a real frame, so the clamp and the
+  // movement pass both see the result.
+  const { EventBus } = await import('../src/core/EventBus.js');
+  const { StateMachine } = await import('../src/core/StateMachine.js');
+  const { Game } = await import('../src/game/Game.js');
+  const { Boss } = await import('../src/entities/Boss.js');
+
+  const bus = new EventBus();
+  const game = new Game({
+    bus,
+    state: new StateMachine(bus, 'menu'),
+    callbacks: {
+      onStateChange() {}, onRoomCleared() {}, onBossSpawned() {},
+      onPlayerDeath() {}, onNotice() {},
+    },
+  });
+  game.startRun('warrior', 'whirlwind', 1234);
+  game.run.enterNode(game.run.plan.bossId, game.getPlayer());
+
+  const room = game.rooms.runtime.room;
+  const player = game.getPlayer();
+  const boss = new Boss({ bossId: 'executioner', x: room.bounds.w / 2, y: room.bounds.h / 2 });
+  game.registry.clear();
+  game.registry.addEnemy(boss);
+  game.registry.setPlayer(player);
+  game.bossController.attach(boss);
+
+  // The trap, stated as a fact about the world: past the outer wall there is no
+  // solid geometry to collide with, and that is exactly why the old check
+  // accepted it.
+  const beyond = { x: room.bounds.x - 120, y: room.bounds.h / 2, radius: boss.radius };
+  assert.equal(
+    game.collisionWorld.overlapsAny(beyond), false,
+    'the premise: beyond the wall there is nothing to overlap',
+  );
+  assert.equal(
+    game.collisionWorld.containsCircle(beyond), false,
+    'but a point beyond the wall is still outside the room',
+  );
+  assert.equal(
+    game.collisionWorld.isFreeSpot(beyond), false,
+    'so it must never be accepted as a place to stand',
+  );
+
+  const teleport = boss.bossDef.attacks.find((a) => a.kind === 'teleport');
+  assert.ok(teleport, 'the executioner must have a teleport attack');
+
+  // Player positions: random interior points, then hugging every wall, which
+  // is where the old check failed most often.
+  const spots = [];
+  for (let i = 0; i < 200; i++) {
+    spots.push({
+      x: room.bounds.x + boss.radius + Math.random() * (room.bounds.w - boss.radius * 2),
+      y: room.bounds.y + boss.radius + Math.random() * (room.bounds.h - boss.radius * 2),
+    });
+  }
+  const inset = (player.radius || 16) + 2;
+  spots.push(
+    { x: room.bounds.x + inset, y: room.bounds.y + room.bounds.h / 2 },
+    { x: room.bounds.x + room.bounds.w - inset, y: room.bounds.y + room.bounds.h / 2 },
+    { x: room.bounds.x + room.bounds.w / 2, y: room.bounds.y + inset },
+    { x: room.bounds.x + room.bounds.w / 2, y: room.bounds.y + room.bounds.h - inset },
+    { x: room.bounds.x + inset, y: room.bounds.y + inset },
+    { x: room.bounds.x + room.bounds.w - inset, y: room.bounds.y + room.bounds.h - inset },
+  );
+
+  let escapes = 0;
+  let stranded = 0;
+  const distances = [];
+  for (const spot of spots) {
+    player.x = spot.x;
+    player.y = spot.y;
+    player.hp = player.maxHp;
+    boss.x = room.bounds.w / 2;
+    boss.y = room.bounds.h / 2;
+    boss.hp = boss.maxHp;
+    boss.alive = true;
+    boss.globalCooldown = 99; // no other attack may move it inside the frame
+
+    boss.beginAttack(teleport, { x: player.x, y: player.y });
+    boss.pending.timer = 0;
+    game.bossController.execute(boss.resolveAttack());
+    game.update(1 / 60, {
+      move: { x: 0, y: 0 }, aim: { x: player.x + 10, y: player.y }, attackHeld: false,
+    });
+
+    if (!game.collisionWorld.isFreeSpot({ x: boss.x, y: boss.y, radius: boss.radius })) escapes++;
+    const d = Math.hypot(boss.x - player.x, boss.y - player.y);
+    distances.push(d);
+    if (d > 260) stranded++;
+  }
+
+  assert.equal(escapes, 0, `${escapes} of ${spots.length} blinks ended outside the room or in a wall`);
+  assert.equal(stranded, 0, `${stranded} blinks put the boss further than 260px from the player`);
+  distances.sort((a, b) => a - b);
+  assert.ok(
+    distances[0] > 40,
+    `a blink must not land on top of the player (closest was ${distances[0].toFixed(0)}px)`,
+  );
+});
+
 await check('REGRESSION: shields break under sustained fire', async () => {
   // Bug: two adjacent shieldbearers always face the player, so each covered
   // the other's flank and NO reachable position could damage either — an
