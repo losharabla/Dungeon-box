@@ -76,6 +76,16 @@ const BUDGETS = {
    * future change reintroduces one effect per hit, at least one of them trips.
    */
   'void staff (piercing pack)': { fillText: 60, arc: 600, save: 420 },
+  /**
+   * The beam down a line of eight bodies.
+   *
+   * The second firing mode is continuous, so unlike every other attack in the
+   * game its cost is paid sixty times a second for as long as the button is
+   * held. What this guards is a beam that grows work with the number of
+   * bodies it touches, or one that emits particles per frame instead of per
+   * tick: either would show up here as `arc`/`save`/`particles` climbing.
+   */
+  'void staff (beam down a pack)': { fillText: 40, arc: 400, save: 300 },
 };
 
 /**
@@ -86,6 +96,7 @@ const BUDGETS = {
  */
 const WORK_BUDGETS = {
   'void staff (piercing pack)': { particles: 420, peakDropped: 160 },
+  'void staff (beam down a pack)': { particles: 120, peakDropped: 60 },
 };
 
 /**
@@ -100,6 +111,7 @@ const AREA_BUDGETS = {
   'busy arena (many enemies)': 14,
   'boss fight (golem)': 14,
   'void staff (piercing pack)': 14,
+  'void staff (beam down a pack)': 14,
 };
 
 const stats = {
@@ -235,20 +247,34 @@ function measure(label, setup, opts = {}) {
   if (opts.weaponId) game.getPlayer().equip(getWeapon(opts.weaponId));
   setup(game);
 
-  // Simulate long enough for the scene to reach steady state (projectiles,
-  // particles, and status effects all up).
+  // `aim` is a *screen* point. The older scenes pass `p.x + 300` straight
+  // through and have done since they were written, so that literal is kept
+  // for them: a baseline that moves for a reason unrelated to the code is not
+  // a baseline. A scene that needs to point somewhere specific asks for it in
+  // world space instead, and gets converted here.
   const p = game.getPlayer();
-  for (let i = 0; i < 60 * 4; i++) {
+  const simSeconds = opts.simSeconds ?? 4;
+  const legacyAim = { x: p.x + 300, y: p.y };
+  let aimScreen = legacyAim;
+  let aimWorld = legacyAim;
+  if (opts.aimWorld) {
+    aimWorld = typeof opts.aimWorld === 'function' ? opts.aimWorld(game) : { ...opts.aimWorld };
+    aimScreen = {
+      x: aimWorld.x - game.camera.x + CONFIG.view.width / 2,
+      y: aimWorld.y - game.camera.y + CONFIG.view.height / 2,
+    };
+  }
+  for (let i = 0; i < 60 * simSeconds; i++) {
     game.update(1 / 60, {
       move: { x: 0, y: 0 },
-      aim: { x: p.x + 300, y: p.y },
-      attackHeld: true, attackPressed: i === 0, ultPressed: i === 120,
+      aim: aimScreen,
+      attackHeld: opts.beam !== true, attackPressed: i === 0, ultPressed: i === 120,
+      beamHeld: opts.beam === true,
     });
   }
 
   const canvas = {
-    width: CONFIG.view.width, height: CONFIG.view.height,
-    clientWidth: CONFIG.view.width, clientHeight: CONFIG.view.height,
+    width: CONFIG.view.width, height: CONFIG.view.height,    clientWidth: CONFIG.view.width, clientHeight: CONFIG.view.height,
     getBoundingClientRect: () => ({ left: 0, top: 0, width: CONFIG.view.width, height: CONFIG.view.height }),
     getContext: makeRecorder,
   };
@@ -260,9 +286,10 @@ function measure(label, setup, opts = {}) {
   const frame = () => scene.draw({
     room: rt.room, runtime: rt, registry: game.registry,
     projectiles: game.projectiles, particles: game.particles,
+    beam: game.beam,
     floatingText: game.floatingText, hazards: game.bossController.hazards,
     ultimateVisuals: game.ultimates.visuals, screenFlash: game.screenFlash,
-    aimWorld: { x: p.x + 300, y: p.y }, showReticle: true,
+    aimWorld, showReticle: true,
   });
 
   // A fresh game every process start, so one scene's cold caches cannot be
@@ -353,6 +380,34 @@ measure('void staff (piercing pack)', (game) => {
     }
   }
 }, { classId: 'mage', ultimateId: 'meteor', weaponId: 'staff_of_the_void' });
+
+/**
+ * The beam, held down a line of bodies.
+ *
+ * The second firing mode is continuous, so unlike every other attack in the
+ * game its cost is paid sixty times a second for as long as the button is
+ * held. What has to stay bounded is exactly what this measures: one beam, one
+ * impact, and a fixed number of damage applications no matter how long the
+ * line of bodies is.
+ */
+measure('void staff (beam down a pack)', (game) => {
+  const rt = game.rooms.runtime;
+  rt.cleared = true;
+  const p = game.getPlayer();
+  const types = ['goblin', 'skeleton', 'slime', 'orc', 'enemy_mage'];
+  for (let c = 0; c < 8; c++) {
+    const enemy = game.spawner.spawnEnemy(types[c % types.length], p.x + 90 + c * 44, p.y);
+    enemy.hp = 100000;
+    enemy.maxHp = 100000;
+    // Frozen, or the line walks into the muzzle and the ramp never settles.
+    enemy.status.apply('timestop', 60, 1);
+  }
+}, {
+  classId: 'mage', ultimateId: 'meteor', weaponId: 'staff_of_the_void',
+  beam: true, simSeconds: 2.4,
+  // Straight down the line of bodies the setup spawns.
+  aimWorld: (game) => ({ x: game.getPlayer().x + 400, y: game.getPlayer().y }),
+});
 
 /* ---------- baked layers ---------- */
 

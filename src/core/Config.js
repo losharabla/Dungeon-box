@@ -188,6 +188,18 @@ export const CONFIG = {
     dotFeedbackInterval: 0.35,
 
     /**
+     * Seconds between burning ticks, and therefore the unit `burnDamage` is
+     * multiplied by.
+     *
+     * `burnDamage` is documented as damage per *second*, so the amount applied
+     * on each tick is `burnDamage * burnTickInterval`. Applying the rate flat
+     * once per tick — which is what the code did — quietly dealt 1/0.4 = 2.5
+     * times the number in the weapon data: a 6 dps burn was 15 dps, and the
+     * Fire Staff's burn outdamaged its own projectile.
+     */
+    burnTickInterval: 0.4,
+
+    /**
      * Total living non-boss enemies a room may contain. Summoners (the
      * necromancer and the boss summon attacks) stop adding bodies at this
      * ceiling, so a long fight cannot degenerate into an unwinnable swarm
@@ -214,6 +226,55 @@ export const CONFIG = {
     cooldown: 1.5,
     /** Multiplier applied to the player's effective movement speed. */
     speedMul: 3.6,
+  },
+
+  /**
+   * Beam mode (right mouse button) for the magic weapons.
+   *
+   * Every staff fires two ways: bolts on the left button, a held beam on the
+   * right. The *model* of the beam is shared — a raycast to the first wall, a
+   * tick rate, and a heat gauge that locks the staff out — while the numbers
+   * and the effect belong to the weapon (`weapons.js` `beam` block): what it
+   * costs per second, how far it reaches, what it inflicts, and whether it
+   * stops at the first body or shines through it.
+   *
+   * The heat gauge is what keeps the beam from being the only button worth
+   * pressing: it is stronger than the bolts while it lasts and unavailable
+   * while it cools, so the staff is played as a rhythm rather than held down.
+   */
+  beam: {
+    /**
+     * Damage applications per second.
+     *
+     * Each tick applies `dps / tickRate`, so the configured dps is the dps
+     * actually dealt whatever this is set to. It is deliberately low: every
+     * tick is a status roll and a hit-volume test, and the damage *labels* are
+     * batched by `combat.dotFeedbackInterval` anyway.
+     */
+    tickRate: 12,
+    /** Seconds of continuous fire before the staff locks out. */
+    heatUpTime: 3.2,
+    /** Gauge fraction per second shed while cooling. */
+    coolRate: 0.5,
+    /** Seconds after letting go before cooling starts. */
+    coolDelay: 0.3,
+    /**
+     * The gauge must fall back to this before the beam fires again.
+     *
+     * A lock-out that cleared at 1.0 would let the player tap the button the
+     * instant it unlocked and stutter the beam at full heat; releasing at 0.35
+     * makes an overheat cost roughly a second and a half.
+     */
+    releaseAt: 0.35,
+    /** Half-width of the drawn beam, in world pixels. */
+    halfWidth: 3,
+    /**
+     * The beam is drawn as a handful of segments, not a particle stream.
+     *
+     * Per-frame cost is bounded by construction: one raycast, at most
+     * `maxTargets` hit volumes, one beam quad and one impact glow.
+     */
+    maxTargets: 12,
   },
 
   loot: {

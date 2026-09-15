@@ -36,6 +36,8 @@ export const BOUND_SOUND_IDS = /** @type {const} */ ([
   'shoot_light',
   'shoot_heavy',
   'shoot_magic',
+  'beam_start',
+  'beam_overheat',
   'hit_flesh',
   'hit_crit',
   'hit_block',
@@ -118,6 +120,19 @@ export function bindGameAudio({ audio, bus }) {
     // A shotgun's worth of pellets or one heavy round carries more weight.
     const punch = (weapon.projectile?.count ?? 1) > 1 || (weapon.baseDamage ?? 0) >= 40;
     audio.play(preset === 'shoot_light' && punch ? 'shoot_heavy' : preset, at(player));
+  });
+
+  /* ---------------- Beam ---------------- */
+
+  // Only the edges are audible: the beam itself is silent, because the damage
+  // it deals ticks twelve times a second and the mixer would spend the whole
+  // fight on one weapon.
+  on(EVENTS.BEAM_STARTED, ({ player }) => {
+    audio.play('beam_start', at(player));
+  });
+
+  on(EVENTS.BEAM_OVERHEATED, ({ player }) => {
+    audio.play('beam_overheat', at(player));
   });
 
   /* ---------------- Impacts ---------------- */

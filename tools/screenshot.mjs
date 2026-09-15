@@ -377,6 +377,17 @@ const PAGE_HELPERS = `window.__shot = {
       enemies: enemies.length,
       particles: r.game.particles.count,
       interaction: r.game.getInteraction() ? r.game.getInteraction().kind : null,
+      // The beam as the renderer sees it, so a shot can be checked against
+      // what was actually drawn rather than against what should have been.
+      beam: r.game.beam.last
+        ? {
+          length: Math.round(Math.hypot(r.game.beam.last.x1 - r.game.beam.last.x0,
+            r.game.beam.last.y1 - r.game.beam.last.y0)),
+          hitBody: r.game.beam.last.hitBody,
+          targets: r.game.beam.last.targets,
+        }
+        : null,
+      beamHeat: Number((r.game.getPlayer().beam?.heat ?? 0).toFixed(2)),
     };
   },
 
@@ -483,17 +494,30 @@ async function attack(cdp, down) {
 }
 
 /**
+ * The right button, which every staff fires its beam with.
+ * @param {CDP} cdp @param {boolean} down
+ */
+async function beamAttack(cdp, down) {
+  await cdp.send('Input.dispatchMouseEvent', {
+    type: down ? 'mousePressed' : 'mouseReleased',
+    x: VIEW.width / 2, y: VIEW.height / 2, button: 'right', buttons: down ? 2 : 0, clickCount: 1,
+  });
+}
+
+/**
  * Play the game for a while: face the nearest enemy, close the distance, swing.
  * Real input events only — the same path a player uses.
  *
  * @param {ShotContext} ctx
  * @param {number} seconds
- * @param {{approach?: boolean, ult?: boolean, attack?: boolean}} [opts]
+ * @param {{approach?: boolean, ult?: boolean, attack?: boolean, beam?: boolean,
+ *   hold?: boolean}} [opts]
  */
 async function autoPlay(ctx, seconds, opts = {}) {
   const { cdp, held } = ctx;
   const approach = opts.approach !== false;
   const swings = opts.attack !== false;
+  const beams = opts.beam === true;
   const end = Date.now() + seconds * 1000;
   let pressed = false;
 
@@ -502,7 +526,7 @@ async function autoPlay(ctx, seconds, opts = {}) {
     if (!world || !world.alive) break;
 
     if (swings && !pressed) {
-      await attack(cdp, true);
+      await (beams ? beamAttack(cdp, true) : attack(cdp, true));
       pressed = true;
     }
 
@@ -530,7 +554,10 @@ async function autoPlay(ctx, seconds, opts = {}) {
     await wait(70);
   }
 
-  if (pressed) await attack(cdp, false);
+  // `hold` keeps the button down between slices, which a beam needs: releasing
+  // it between candidates would mean every captured frame shows a staff that
+  // has already stopped firing.
+  if (pressed && !opts.hold) await (beams ? beamAttack(cdp, false) : attack(cdp, false));
   await holdKeys(cdp, held, []);
 }
 /**
@@ -595,11 +622,19 @@ async function playAndPick(cdp, ctx, pick) {
       const score = pick.score(world);
       const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
       if (!best || score > best.score) best = { data, world, score };
-      debug(`candidate score ${score} (hp ${world.hp}/${world.maxHp}, ${world.enemies} enemies, ${world.particles} particles)`);
+      debug(`candidate score ${score} (hp ${world.hp}/${world.maxHp}, ${world.enemies} enemies, ${world.particles} particles${
+        world.beam ? `, beam ${world.beam.length}px hitting ${world.beam.targets}` : ', no beam'})`);
     } else {
       debug(`skipped candidate (hp ${world.hp}/${world.maxHp})`);
       break;
     }
+  }
+
+  // A held shot keeps its button down across the whole candidate loop, so it
+  // has to be let go once the winner has been captured.
+  if (pick.opts?.hold) {
+    await attack(cdp, false);
+    await beamAttack(cdp, false);
   }
 
   return best;
@@ -734,6 +769,25 @@ const SHOTS = [
       await wait(900);
       await tapKey(ctx.cdp, 'Escape');
       await wait(700);
+    },
+  },
+
+  {
+    name: 'beam',
+    caption: 'Staff beam (right button)',
+    async run(ctx) {
+      const where = await ctx.cdp.eval(`window.__shot.gotoRoom('arena', 7, 'mage', 'meteor')`);
+      debug('beam at', JSON.stringify(where));
+      // Let a few bodies arrive so the beam has something to burn.
+      await autoPlayUntil(ctx, (w) => w.enemies >= 3, 12, { attack: false, approach: false });
+    },
+    pick: {
+      // Short: the gauge locks the staff out after three seconds, and a shot
+      // of an overheated staff is a shot of nothing happening. The button
+      // stays down for the whole loop so every candidate has a live beam.
+      seconds: 2.2,
+      opts: { approach: false, beam: true, hold: true },
+      score: (w) => w.particles * 2 + w.enemies * 30,
     },
   },
 ];

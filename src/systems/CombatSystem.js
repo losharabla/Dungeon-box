@@ -156,7 +156,7 @@ export class CombatSystem {
       target.status.apply('hurtIframe', CONFIG.combat.playerHurtIframe, 1);
     }
 
-    this._applyStatus(target, spec);
+    this.applyStatus(target, spec);
     this._knockback(target, source, spec);
 
     // Presentation.
@@ -341,10 +341,14 @@ export class CombatSystem {
   }
 
   /**
+   * Roll a hit spec's status effects onto a target.
+   *
+   * Public because it is the one implementation of "what a hit inflicts": a
+   * beam applies statuses every tick and must not grow a second copy of this.
    * @param {import('../entities/Entity.js').Entity} target
    * @param {HitSpec} spec
    */
-  _applyStatus(target, spec) {
+  applyStatus(target, spec) {
     const r = this.random;
     if (spec.burnChance && r() < spec.burnChance) {
       target.status.apply('burn', spec.burnDuration ?? 2.5, 1);
@@ -516,9 +520,10 @@ export class CombatSystem {
    * @param {number} dps damage per second
    * @param {number} dt fixed step, seconds
    * @param {any} [source]
+   * @param {{color?: string}} [opts] label colour, for sources that have one
    * @returns {number} damage actually applied this step
    */
-  applyDamageOverTime(target, dps, dt, source) {
+  applyDamageOverTime(target, dps, dt, source, opts = {}) {
     if (!target || !target.alive) return 0;
     if (!(dps > 0) || !(dt > 0)) return 0;
     // The Invulnerability ultimate really is a ward, so it does stop fire.
@@ -547,7 +552,7 @@ export class CombatSystem {
         });
       } else {
         this.floatingText.addDamage(target.x, target.y - target.radius - 10, chunk, {
-          color: FloatingTextSystem.COLORS.damage, size: 14,
+          color: opts.color ?? FloatingTextSystem.COLORS.damage, size: 14,
         });
       }
     }
@@ -574,12 +579,17 @@ export class CombatSystem {
    * @param {import('../entities/Entity.js').Entity[]} entities
    */
   updateStatusDamage(dt, entities) {
+    const interval = CONFIG.combat.burnTickInterval;
     for (const e of entities) {
       if (!e.alive) continue;
       if (e.status.has('burn')) {
-        const ticks = e.status.consumeTicks('burn', dt, 0.4);
+        const ticks = e.status.consumeTicks('burn', dt, interval);
         for (let i = 0; i < ticks; i++) {
-          const burnDamage = e.burnDamage ?? 5;
+          // `burnDamage` is a rate, so the tick carries `rate * interval`.
+          // Applying it flat made burning deal 1/interval times its documented
+          // dps — 6 damage every 0.4s is 15 dps, not 6 — which is why the Fire
+          // Staff's burn outdamaged the projectile that applied it.
+          const burnDamage = (e.burnDamage ?? 5) * interval;
           const applied = e.takeDamage(burnDamage);
           if (applied > 0) {
             this.floatingText.add(e.x, e.y - e.radius, String(Math.round(applied)), {

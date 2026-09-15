@@ -274,18 +274,38 @@ export function pointVsHitVolume(px, py, radius, volume) {
  * @returns {boolean}
  */
 export function segmentVsHitVolume(x0, y0, x1, y1, volume, inflate = 0) {
+  return segmentVsHitVolumeHit(x0, y0, x1, y1, volume, inflate) !== null;
+}
+
+/**
+ * Where a swept point first touches a hit volume, or null.
+ *
+ * The boolean above is all a projectile needs — it either hit or it did not.
+ * A beam has to know *where* the first body is, so that it can stop there
+ * instead of shining through it, and so the impact glow sits on the body
+ * rather than at the wall behind it.
+ *
+ * @param {number} x0
+ * @param {number} y0
+ * @param {number} x1
+ * @param {number} y1
+ * @param {HitVolume} volume
+ * @param {number} [inflate]
+ * @returns {RayHit|null}
+ */
+export function segmentVsHitVolumeHit(x0, y0, x1, y1, volume, inflate = 0) {
   if (!isBox(volume)) {
     const circle = { x: volume.x, y: volume.y, radius: (volume.radius ?? 0) + inflate };
-    return segmentVsCircle(x0, y0, x1, y1, circle) !== null;
+    return segmentVsCircle(x0, y0, x1, y1, circle);
   }
 
-  // Inflate the box by the projectile radius, then sweep the bare segment.
+  // Inflate the box by the beam's half-width, then sweep the bare segment.
   const rect = volumeRect(volume);
   rect.x -= inflate;
   rect.y -= inflate;
   rect.w += inflate * 2;
   rect.h += inflate * 2;
-  return segmentVsRect(x0, y0, x1 - x0, y1 - y0, rect) !== null;
+  return segmentVsRect(x0, y0, x1 - x0, y1 - y0, rect);
 }
 
 /**

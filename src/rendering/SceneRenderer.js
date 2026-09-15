@@ -13,6 +13,7 @@ import { RoomBaker, blit } from './roomBake.js';
 import { drawHazards, drawUltimateVisuals, drawExitMarkers, drawRoomInteractables, drawAtmosphere } from './effectsRenderer.js';
 import { drawProjectile } from './projectileRenderer.js';
 import { drawDebugOverlay } from './projectileRenderer.js';
+import { drawBeam } from './beamRenderer.js';
 import { drawReticle } from './playerRenderer.js';
 import { CONFIG } from '../core/Config.js';
 
@@ -48,6 +49,7 @@ export class SceneRenderer {
    * @param {any} scene.runtime
    * @param {import('../entities/EntityRegistry.js').EntityRegistry} scene.registry
    * @param {import('../systems/ProjectileSystem.js').ProjectileSystem} scene.projectiles
+   * @param {import('../systems/BeamSystem.js').BeamSystem} [scene.beam]
    * @param {import('../rendering/particleSystem.js').ParticleSystem} scene.particles
    * @param {import('../rendering/textEffects.js').FloatingTextSystem} scene.floatingText
    * @param {import('./decals.js').DecalLayer} [scene.decals]
@@ -134,6 +136,12 @@ export class SceneRenderer {
       if (!this.render.isVisible(p.x, p.y, p.radius + 40)) continue;
       drawProjectile(ctx, p, time);
     }
+
+    // --- The held beam ---------------------------------------------------
+    // Beside the projectiles rather than above the actors: it is the same
+    // layer of the picture, and a beam that covered the bodies it is burning
+    // would hide exactly what the player is aiming at.
+    if (scene.beam) drawBeam(ctx, scene.beam.last, time);
 
     // --- Particles -------------------------------------------------------
     scene.particles.draw(ctx, this.render);

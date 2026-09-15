@@ -392,6 +392,15 @@ html, body {
   background: linear-gradient(180deg, #eafff2, #7fe0a8 50%, #2f7d52);
   box-shadow: 0 0 14px rgba(127, 224, 168, .6);
 }
+/* Beam heat: fills as it is held, and turns red when it has locked out. */
+.bar-beam .bar-fill {
+  background: linear-gradient(180deg, #ffe6a8, #ffa23d 50%, #8c4a1f);
+  box-shadow: 0 0 12px rgba(255, 162, 61, .5);
+}
+.bar-beam .bar-fill.overheated {
+  background: linear-gradient(180deg, #ffd0d0, #ff5a3c 50%, #8c1f1f);
+  box-shadow: 0 0 16px rgba(255, 90, 60, .8);
+}
 .bar-boss { height: 22px; }
 .bar-boss .bar-fill {
   background: linear-gradient(180deg, #ffb36b, #c8452f 50%, #5e1810);
@@ -480,6 +489,7 @@ html, body {
 
 .hud-ult { width: 300px; }
 .hud-dash { width: 170px; }
+.hud-beam { width: 170px; }
 .hud-ult-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 10px; }
 
 .boss-bar {
@@ -624,5 +634,6 @@ html, body {
   .title { font-size: 38px; }
   .hud-ult { width: 180px; }
   .hud-dash { width: 110px; }
+  .hud-beam { width: 110px; }
   .hud-hp { min-width: 150px; }
 }

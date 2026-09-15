@@ -373,6 +373,7 @@ function fixedUpdate(dt) {
     aim,
     attackHeld: input.mouseDown,
     attackPressed: input.mousePressed,
+    beamHeld: input.beamDown,
     ultPressed: input.wasPressed('KeyQ'),
     dashPressed: input.wasPressed('Space'),
   });
@@ -525,6 +526,7 @@ function renderFrame(alpha, frameDelta) {
       runtime: rt,
       registry: game.registry,
       projectiles: game.projectiles,
+      beam: game.beam,
       particles: game.particles,
       floatingText: game.floatingText,
       decals: game.decals,
@@ -560,7 +562,10 @@ function updateContextHint() {
     ui.setHint(`Door leads to: ${roomTypeLabel(interaction.door?.targetType)}`);
   } else {
     const player = game.getPlayer();
-    if (player && player.ultReady) ui.setHint('[Q] ULTIMATE READY');
+    // An overheated staff is a blocking state the player has to notice, so it
+    // outranks the ultimate prompt.
+    if (player && player.beam.locked) ui.setHint('STAFF OVERHEATED — let it cool');
+    else if (player && player.ultReady) ui.setHint('[Q] ULTIMATE READY');
     else ui.setHint('');
   }
 }

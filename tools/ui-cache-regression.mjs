@@ -5,7 +5,7 @@ import { Player } from '../src/entities/Player.js';
 const node = () => ({style:{},classList:{toggle(){}},hidden:true});
 const ui = Object.create(UIManager.prototype);
 ui._cache = {};
-ui.el = Object.fromEntries(['hpFill','hpText','goldText','shopGold','ultFill','dashFill','weaponName','bossBar'].map(k=>[k,node()]));
+ui.el = Object.fromEntries(['hpFill','hpText','goldText','shopGold','ultFill','dashFill','weaponName','bossBar','beam','beamName','beamFill'].map(k=>[k,node()]));
 let writes = 0;
 ui.el.ultName = {set textContent(v){writes++;this.value=v;}};
 const player = new Player({classId:'warrior',x:0,y:0,ultimateId:'whirlwind'});

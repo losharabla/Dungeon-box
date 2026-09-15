@@ -17,6 +17,7 @@ import { EntityRegistry } from '../entities/EntityRegistry.js';
 import { CollisionWorld } from '../entities/Room.js';
 import { CombatSystem } from '../systems/CombatSystem.js';
 import { CombatCoordinator, registerBossBehaviour } from '../systems/CombatCoordinator.js';
+import { BeamSystem } from '../systems/BeamSystem.js';
 import { ProjectileSystem } from '../systems/ProjectileSystem.js';
 import { MovementSystem } from '../systems/MovementSystem.js';
 import { AISystem } from '../systems/AISystem.js';
@@ -142,6 +143,14 @@ export class Game {
       projectiles: this.projectiles,
       bus,
       triggerUltimate: (id, player, aim) => this.ultimates.activate(id, player, aim),
+    });
+
+    // The other half of a magic weapon: the held beam on the right button.
+    this.beam = new BeamSystem({
+      combat: this.combat,
+      collisionWorld: this.collisionWorld,
+      registry: this.registry,
+      bus,
     });
 
     // Bosses share the ordinary AI loop through a registered behaviour.
@@ -283,6 +292,7 @@ export class Game {
    * @param {object} input
    * @param {boolean} input.attackHeld
    * @param {boolean} input.attackPressed
+   * @param {boolean} input.beamHeld  magic weapons: the right-button beam
    * @param {boolean} input.ultPressed
    * @param {boolean} input.dashPressed
    * @param {{x: number, y: number}} input.move
@@ -334,6 +344,11 @@ export class Game {
       attackPressed: input.attackPressed,
       ultPressed: input.ultPressed,
     }, aimWorld);
+
+    // The beam is fed the raw button rather than going through the
+    // coordinator: it has no cooldown, it keeps its own heat, and a magic
+    // weapon is the only thing that can fire it.
+    this.beam.update(dt, player, Boolean(input.beamHeld));
 
     // --- 2. Enemy AI -----------------------------------------------------
     this.ai.update(dt, this.registry.enemies);

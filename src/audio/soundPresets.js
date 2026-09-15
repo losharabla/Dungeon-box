@@ -144,6 +144,39 @@ export const SOUND_PRESETS = {
     ],
   },
 
+  /* ---------------- Beam ---------------- */
+
+  /**
+   * A staff's beam spins up.
+   *
+   * Long enough to cover a good part of the hold — the gauge lasts 3.2s — and
+   * with a filter that opens as it goes, so it reads as charging rather than
+   * as another shot. It is a rising edge only: the beam fires no sound per
+   * tick, because twelve impacts a second is not a weapon, it is a siren.
+   */
+  beam_start: {
+    gain: 0.26,
+    priority: PRIORITY.player,
+    layers: [
+      { source: 'tone', wave: 'sawtooth', freq: [180, 420], dur: 0.9, attack: 0.06, level: 0.5 },
+      { source: 'tone', wave: 'sine', freq: [520, 880], dur: 1.1, attack: 0.12, level: 0.35, detune: 8 },
+      { source: 'noise', filter: 'bandpass', cutoff: [500, 2200], q: 1.2, dur: 0.8, attack: 0.2, level: 0.3 },
+    ],
+  },
+
+  /**
+   * The staff locks itself out. Deliberately unpleasant, and the only cue in
+   * the game that has to reach the player over a fight in progress.
+   */
+  beam_overheat: {
+    gain: 0.5,
+    priority: PRIORITY.important,
+    layers: [
+      { source: 'noise', filter: 'highpass', cutoff: [1400, 3200], dur: 0.35, attack: 0.005 },
+      { source: 'tone', wave: 'square', freq: [300, 90], dur: 0.28, attack: 0.002, level: 0.6 },
+    ],
+  },
+
   /* ---------------- Impacts ---------------- */
 
   hit_flesh: {

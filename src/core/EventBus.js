@@ -135,6 +135,12 @@ export const EVENTS = {
   STATUS_APPLIED: 'combat:statusApplied',
   /** A dash burst started. Presentation-only: audio, trails, diagnostics. */
   DASHED: 'combat:dashed',
+  /** A beam started firing (rising edge only, not once per tick). */
+  BEAM_STARTED: 'combat:beamStarted',
+  /** A beam stopped firing. */
+  BEAM_STOPPED: 'combat:beamStopped',
+  /** The heat gauge filled and the staff locked itself out. */
+  BEAM_OVERHEATED: 'combat:beamOverheated',
 
   // --- economy / progression ---
   GOLD_CHANGED: 'economy:goldChanged',

@@ -26,7 +26,8 @@
       <div class="help-block" hidden>
         <p><b>W A S D</b> — move</p>
         <p><b>Mouse</b> — aim</p>
-        <p><b>Left click</b> — attack</p>
+        <p><b>Left click</b> — attack. A staff fires bolts</p>
+        <p><b>Right click</b> — a staff's held beam, until it overheats</p>
         <p><b>Q</b> — ultimate</p>
         <p><b>E</b> — interact (doors, shop, altar)</p>
         <p><b>ESC</b> — pause</p>
@@ -87,6 +88,14 @@
             <span class="key" id="hud-dash-key">Space</span>
           </div>
           <div class="bar bar-dash"><div class="bar-fill" id="hud-dash-fill"></div></div>
+        </div>
+        <!-- Magic weapons only: hidden for the other two classes. -->
+        <div class="hud-beam" id="hud-beam" hidden>
+          <div class="hud-ult-head">
+            <span class="hud-label" id="hud-beam-name">Beam</span>
+            <span class="key">RMB</span>
+          </div>
+          <div class="bar bar-beam"><div class="bar-fill" id="hud-beam-fill"></div></div>
         </div>
         <div class="hud-ult">
           <div class="hud-ult-head">

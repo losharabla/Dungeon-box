@@ -101,9 +101,27 @@ export class Player extends Entity {
       firing: false,
     };
 
+    /**
+     * Beam mode (right mouse button): the heat gauge, whether the staff has
+     * locked itself out, and the ramp the lightning staff builds up while the
+     * beam is held.
+     *
+     * Not to be confused with `attack.heat`, which is the Hellstorm's gun
+     * fire-rate ramp — different weapon class, different mechanic.
+     */
+    this.beam = {
+      /** Gauge fraction, 0..1. Fills while firing, sheds while cooling. */
+      heat: 0,
+      /** True once the gauge filled, until it falls back to `releaseAt`. */
+      locked: false,
+      /** Whether the beam was firing during the last step. */
+      firing: false,
+      /** Seconds the current beam has been held, for the damage ramp. */
+      ramp: 0,
+    };
+
     /** Facing of the swinging weapon, captured at swing start. */
-    this.swingAngle = 0;
-    /** Direction of the most recent melee/dash lunge. */
+    this.swingAngle = 0;    /** Direction of the most recent melee/dash lunge. */
     this.lungeX = 0;
     this.lungeY = 0;
 
@@ -267,6 +285,11 @@ export class Player extends Entity {
     this.weaponId = weapon.id;
     // Reset the heat ramp; it belongs to the previous gun's rhythm.
     this.attack.heat = 0;
+    // The beam gauge belongs to the staff in hand too: carrying a lock-out
+    // into a fresh weapon would punish the swap rather than the overheat.
+    this.beam.heat = 0;
+    this.beam.locked = false;
+    this.beam.ramp = 0;
   }
 
   /**

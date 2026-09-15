@@ -17,9 +17,11 @@ import { registerBehaviour } from './AISystem.js';
  * The combat shape of an entity: its drawn body when it has one, otherwise
  * its plain circle. Built by the entity itself (`getHitVolume`), so no system
  * duplicates the art's proportions.
+ *
+ * Exported because the beam needs the same answer to the same question.
  * @param {any} entity
  */
-function hitVolumeOf(entity) {
+export function hitVolumeOf(entity) {
   return typeof entity.getHitVolume === 'function'
     ? entity.getHitVolume()
     : { x: entity.x, y: entity.y, radius: entity.hitRadius ?? entity.radius };

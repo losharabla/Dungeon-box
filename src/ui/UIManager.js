@@ -68,6 +68,9 @@ export class UIManager {
       rooms: must('hud-rooms'),
       weaponName: must('hud-weapon-name'),
       dashFill: must('hud-dash-fill'),
+      beam: must('hud-beam'),
+      beamName: must('hud-beam-name'),
+      beamFill: must('hud-beam-fill'),
       ultName: must('hud-ult-name'),
       ultFill: must('hud-ult-fill'),
       hint: must('hud-hint'),
@@ -230,6 +233,27 @@ export class UIManager {
       c.weapon = weaponName;
       this.el.weaponName.textContent = weaponName;
       this.el.weaponName.classList.toggle('legendary', player.weapon.legendary === true);
+    }
+
+    // Beam heat. Only magic weapons have one, so the whole block comes and
+    // goes with the weapon, and the gauge is quantised exactly like the dash
+    // bar: it moves every frame while the beam is held, and a DOM write the
+    // player cannot see is wasted work on the render path.
+    const hasBeam = Boolean(player.weapon.beam && player.weapon.kind === 'magic');
+    if (hasBeam !== c.beamShown) {
+      c.beamShown = hasBeam;
+      this.el.beam.hidden = !hasBeam;
+    }
+    if (hasBeam) {
+      const heat = Math.round((player.beam?.heat ?? 0) * 100);
+      const locked = player.beam?.locked === true;
+      if (heat !== c.beamHeat || locked !== c.beamLocked) {
+        c.beamHeat = heat;
+        c.beamLocked = locked;
+        this.el.beamFill.style.width = `${heat}%`;
+        this.el.beamFill.classList.toggle('overheated', locked);
+        this.el.beamName.textContent = locked ? 'Beam — overheated' : 'Beam';
+      }
     }
 
     // Ultimate label reflects readiness, which doubles as the "ULT READY"

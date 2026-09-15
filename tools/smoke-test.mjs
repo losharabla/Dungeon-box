@@ -979,6 +979,238 @@ await check('REGRESSION: a blink lands inside the room, not merely clear of wall
   );
 });
 
+/* ============================================================
+   Magic weapons: bolts on one button, a beam on the other
+   ============================================================ */
+
+/**
+ * A mage in a cleared arena with room to aim.
+ *
+ * The arena matters twice over: the starting room is small enough that a
+ * target beyond a beam's range cannot be placed inside it, and the wave
+ * spawner has to be switched off or extra bodies walk into the ray while the
+ * measurement is running.
+ */
+async function beamRig(weaponId) {
+  const { EventBus } = await import('../src/core/EventBus.js');
+  const { StateMachine } = await import('../src/core/StateMachine.js');
+  const { Game } = await import('../src/game/Game.js');
+  const { getWeapon } = await import('../src/data/weapons.js');
+
+  const bus = new EventBus();
+  const game = new Game({
+    bus,
+    state: new StateMachine(bus, 'menu'),
+    callbacks: {
+      onStateChange() {}, onRoomCleared() {}, onBossSpawned() {},
+      onPlayerDeath() {}, onNotice() {},
+    },
+  });
+  game.startRun('mage', 'meteor', 1234);
+  const player = game.getPlayer();
+  player.equip(getWeapon(weaponId));
+
+  for (let i = 0; i < 20; i++) {
+    const rt = game.rooms.runtime;
+    if (rt && rt.type === 'arena') break;
+    rt.cleared = true;
+    const node = game.run.currentNode();
+    if (!node || node.next.length === 0) break;
+    game.travelTo(node.next[0]);
+  }
+  game.rooms.runtime.cleared = true;
+  for (const e of game.registry.enemies) e.kill();
+  game.registry.reap();
+
+  player.x = 260;
+  player.y = 300;
+  game.camera.follow(player.x, player.y, true);
+  return { game, player };
+}
+
+/** A target that will not walk out of the measurement. */
+function beamDummy(game, x, y) {
+  const dummy = game.spawner.spawnEnemy('slime', x, y);
+  dummy.maxHp = 100000;
+  dummy.hp = 100000;
+  dummy.status.apply('timestop', 120, 1);
+  return dummy;
+}
+
+/** Hold (or release) the beam for `seconds`, aimed at `target`. */
+async function holdBeam(game, player, target, seconds, firing = true) {
+  const { CONFIG } = await import('../src/core/Config.js');
+  const aim = {
+    x: target.x - game.camera.x + CONFIG.view.width / 2,
+    y: target.y - game.camera.y + CONFIG.view.height / 2,
+  };
+  for (let i = 0; i < Math.round(seconds * 60); i++) {
+    game.update(1 / 60, {
+      move: { x: 0, y: 0 },
+      aim,
+      attackHeld: false,
+      attackPressed: false,
+      beamHeld: firing,
+      ultPressed: false,
+      dashPressed: false,
+    });
+  }
+}
+
+await check('REGRESSION: a staff fires bolts on one button and a beam on the other', async () => {
+  // The rework: every staff gained a second firing mode on the right button,
+  // and the four of them are one mechanic with four sets of numbers.
+  const dps = { fire_staff: 30, ice_staff: 20, staff_of_the_void: 34 };
+
+  for (const [id, rate] of Object.entries(dps)) {
+    const { game, player } = await beamRig(id);
+    const beam = player.weapon.beam;
+    assert.ok(beam, `${id} must have a beam`);
+    const dummy = beamDummy(game, player.x + 200, player.y);
+
+    await holdBeam(game, player, dummy, 1.0);
+    const dealt = 100000 - dummy.hp;
+    // The lower bound is the configured rate; the upper one allows for the
+    // weapon's own damage-over-time on top of it (a burning target takes the
+    // beam *and* the burn).
+    const ceiling = (rate + (beam.burnDamage ?? 0)) * 1.1;
+    assert.ok(
+      dealt >= rate * 0.9 && dealt <= ceiling,
+      `${id}: 1s of beam dealt ${dealt.toFixed(1)}, expected ${rate}..${ceiling.toFixed(1)}`,
+    );
+  }
+
+  // The lightning staff is the one whose rate moves: it has to land above its
+  // starting figure and below its ceiling.
+  {
+    const { game, player } = await beamRig('lightning_staff');
+    const beam = player.weapon.beam;
+    const dummy = beamDummy(game, player.x + 200, player.y);
+    await holdBeam(game, player, dummy, 1.0);
+    const dealt = 100000 - dummy.hp;
+    assert.ok(
+      dealt > beam.damage * 1.05 && dealt < beam.damageMax,
+      `the lightning beam must ramp: 1s dealt ${dealt.toFixed(1)}, between ${beam.damage} and ${beam.damageMax}`,
+    );
+  }
+
+  // A weapon without a beam must ignore the beam button entirely.
+  {
+    const { game, player } = await beamRig('sword');
+    assert.equal(player.weapon.beam, undefined, 'a sword has no beam');
+    const dummy = beamDummy(game, player.x + 60, player.y);
+    await holdBeam(game, player, dummy, 0.5);
+    assert.equal(dummy.hp, 100000, 'the right button must do nothing without a staff');
+    assert.equal(game.beam.last, null, 'and nothing may be drawn');
+  }
+
+  // A beam stops at the first body; the void staff is the one that does not.
+  for (const [id, expected] of [['fire_staff', 1], ['staff_of_the_void', 2]]) {
+    const { game, player } = await beamRig(id);
+    const first = beamDummy(game, player.x + 150, player.y);
+    const second = beamDummy(game, player.x + 260, player.y);
+
+    let most = 0;
+    for (let i = 0; i < 30; i++) {
+      await holdBeam(game, player, first, 1 / 60);
+      if (game.beam.last) most = Math.max(most, game.beam.last.targets);
+    }
+    assert.equal(most, expected, `${id} must hit ${expected} of the two bodies in line`);
+    assert.ok(first.hp < 100000, `${id} must damage the first body`);
+    if (expected === 1) {
+      assert.equal(second.hp, 100000, `${id} must not reach past the first body`);
+    } else {
+      assert.ok(second.hp < 100000, `${id} must damage the body behind the first`);
+    }
+  }
+
+  // Range is a hard limit, and it is the trade for not being able to miss.
+  {
+    const { game, player } = await beamRig('fire_staff');
+    const range = player.weapon.beam.range;
+    const beyond = beamDummy(game, player.x + range + 120, player.y);
+    await holdBeam(game, player, beyond, 1.0);
+    assert.equal(beyond.hp, 100000, `a body ${range + 120}px away is out of a ${range}px beam`);
+    assert.equal(game.beam.last.targets, 0, 'and the beam reports nothing hit');
+  }
+});
+
+await check('REGRESSION: the beam overheats, and a held staff never cools', async () => {
+  const { CONFIG } = await import('../src/core/Config.js');
+  const { game, player } = await beamRig('ice_staff');
+  const dummy = beamDummy(game, player.x + 200, player.y);
+
+  // Fill the gauge.
+  let lockedAt = null;
+  for (let i = 0; i < 60 * 8 && lockedAt === null; i++) {
+    await holdBeam(game, player, dummy, 1 / 60);
+    if (player.beam.locked) lockedAt = (i + 1) / 60;
+  }
+  assert.ok(lockedAt !== null, 'the gauge must fill and lock the staff');
+  assert.ok(
+    Math.abs(lockedAt - CONFIG.beam.heatUpTime) < 0.25,
+    `it must lock at heatUpTime: locked at ${lockedAt?.toFixed(2)}s, expected ${CONFIG.beam.heatUpTime}s`,
+  );
+
+  // Holding through the lock-out must not fire, and must not cool either:
+  // letting go is the cost of the overheat.
+  const hpBefore = dummy.hp;
+  await holdBeam(game, player, dummy, 1.5);
+  assert.equal(dummy.hp, hpBefore, 'a locked staff must stop dealing damage');
+  assert.ok(player.beam.locked, 'and it must stay locked while the button is held');
+  assert.ok(
+    player.beam.heat >= 1 - 1e-6,
+    `a held staff must not cool itself (heat ${player.beam.heat.toFixed(2)})`,
+  );
+
+  // Releasing lets it shed heat, and it must reach the release threshold
+  // before it will fire again.
+  await holdBeam(game, player, dummy, 0.6, false);
+  assert.ok(
+    player.beam.heat > CONFIG.beam.releaseAt,
+    `0.6s of cooling is not enough (heat ${player.beam.heat.toFixed(2)})`,
+  );
+  await holdBeam(game, player, dummy, 2.0, false);
+  assert.equal(player.beam.locked, false, 'it must unlock once the gauge has fallen far enough');
+  assert.ok(player.beam.heat <= CONFIG.beam.releaseAt, 'and only then');
+
+  // And it fires again.
+  const hpRecovered = dummy.hp;
+  await holdBeam(game, player, dummy, 0.5);
+  assert.ok(dummy.hp < hpRecovered, 'the staff must fire again after cooling');
+});
+
+await check('REGRESSION: burning deals the dps the weapon data declares', async () => {
+  // Bug: `burnDamage` is documented as damage per second, but the burn tick
+  // applied it *flat* once per 0.4s — so a 6 dps burn dealt 15 dps, and the
+  // Fire Staff's burn outdamaged the projectile that applied it.
+  const { game, player } = await beamRig('ice_staff');
+  void player;
+  const dummy = beamDummy(game, 300, 300);
+  dummy.burnDamage = 10;
+  dummy.status.apply('burn', 2.0, 1);
+
+  const before = dummy.hp;
+  for (let i = 0; i < 60 * 2; i++) {
+    game.update(1 / 60, {
+      move: { x: 0, y: 0 },
+      aim: { x: 0, y: 0 },
+      attackHeld: false,
+      attackPressed: false,
+      beamHeld: false,
+      ultPressed: false,
+      dashPressed: false,
+    });
+  }
+  const dealt = before - dummy.hp;
+  // Two seconds of a 10 dps burn is 20, and the ticks are 0.4s apart, so the
+  // last one may land just outside the window.
+  assert.ok(
+    dealt >= 16 && dealt <= 21,
+    `2s of a 10 dps burn dealt ${dealt.toFixed(1)}, expected ~20`,
+  );
+});
+
 await check('REGRESSION: shields break under sustained fire', async () => {
   // Bug: two adjacent shieldbearers always face the player, so each covered
   // the other's flank and NO reachable position could damage either — an

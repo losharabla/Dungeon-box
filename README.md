@@ -9,7 +9,7 @@ the repository is the original music track in `assets/music/`.
 **3 classes · 10 enemies · 3 bosses · 9 ultimates · 13 weapons · 4 room types · one run of choices**
 
 [![tests](https://github.com/losharabla/Dungeon-box/actions/workflows/ci.yml/badge.svg)](https://github.com/losharabla/Dungeon-box/actions/workflows/ci.yml)
-[![headless checks](https://img.shields.io/badge/headless%20checks-137%20in%20the%20fast%20gate-success.svg)](#tests)
+[![headless checks](https://img.shields.io/badge/headless%20checks-140%20in%20the%20fast%20gate-success.svg)](#tests)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen.svg)](package.json)
 [![node](https://img.shields.io/badge/node-%E2%89%A518-informational.svg)](package.json)
@@ -23,6 +23,8 @@ the repository is the original music track in `assets/music/`.
 | ![A wave of enemies in an arena](docs/screenshots/arena.png) | ![The merchant's stock](docs/screenshots/shop.png) |
 | **Take the altar's blessing** | **Pause and the sound mixer** |
 | ![The healing altar](docs/screenshots/altar.png) | ![The pause screen with the mixer](docs/screenshots/pause.png) |
+| **A staff's beam (right button)** |  |
+| ![A beam from the Fire Staff burning a body](docs/screenshots/beam.png) | Every staff fires two ways — see [the combat additions](#combat-additions-beyond-the-design-document). |
 
 *Real frames from a real browser, captured by `npm run shots`. `tools/screenshot.mjs` launches
 headless Chrome over the DevTools protocol and plays the game with actual key and mouse
@@ -65,6 +67,7 @@ is in **[`INSTALL.md`](INSTALL.md)**.
 | `W` `A` `S` `D` | Move |
 | Mouse | Aim |
 | Left mouse button | Attack — a melee swing also destroys enemy projectiles in its arc |
+| Right mouse button | A staff's beam — held until the heat gauge fills, then locked out until it cools |
 | `Space` | Dash — a short burst of speed in the movement direction |
 | `Q` | Ultimate (once charged to 100%) |
 | `E` | Interact — shop, healing altar, doors |
@@ -82,7 +85,7 @@ is in **[`INSTALL.md`](INSTALL.md)**.
 - [Content](#content-mvp-scope-32) — what ships, and the rules the art follows
 - [Procedural audio](#procedural-audio) · [Music](#music) — synthesis, voice budget, streaming
 - [Tests](#tests) — 140+ headless checks and what each suite is for
-- [Bugs found by these tests and fixed](#bugs-found-by-these-tests-and-fixed) — 24 of them, with measurements
+- [Bugs found by these tests and fixed](#bugs-found-by-these-tests-and-fixed) — 25 of them, with measurements
 - [Combat additions beyond the design document](#combat-additions-beyond-the-design-document)
 - [Melee balance pass](#melee-balance-pass) — what "the warrior is too hard" measured as
 - [Deliberate scope choices](#deliberate-scope-choices) · [Extending the game](#extending-the-game)
@@ -206,6 +209,7 @@ imports a global `game` object; every system receives what it needs through its 
 │   ├── systems/            The rules that operate on entities
 │   │   ├── CombatSystem.js       Damage, crits, blocks, status, death, rewards
 │   │   ├── CombatCoordinator.js  Player attack cadence + ultimates
+│   │   ├── BeamSystem.js         The held right-button beam of a magic weapon
 │   │   ├── ProjectileSystem.js   Projectiles: pierce, ricochet, explosions
 │   │   ├── MovementSystem.js     Movement, wall sliding, separation
 │   │   ├── AISystem.js           One behaviour function per enemy archetype
@@ -226,6 +230,7 @@ imports a global `game` object; every system receives what it needs through its 
 │   │   ├── bossRenderer.js       The 3 boss silhouettes + telegraphs
 │   │   ├── weaponRenderer.js     Held weapons, recoil, muzzle flash
 │   │   ├── projectileRenderer.js Projectile archetypes, chain lightning
+│   │   ├── beamRenderer.js       The beam: three passes, two glows, no state
 │   │   ├── particleSystem.js     The particle system (§26)
 │   │   ├── effectsRenderer.js    Hazards, ultimate visuals, altars, exits
 │   │   ├── textEffects.js        Floating numbers + screen flash
@@ -528,7 +533,7 @@ Everything below was measured on this machine, not estimated:
   overdraw, boss room 8.2x, and no radial or linear gradients in a steady frame.
 
 ```
-  45/45 unit + regression checks passed
+  48/48 unit + regression checks passed
  12/12 DOM and boot checks passed — including the boss → victory → next-floor UI path
  8/8  HUD alignment checks passed
  6/6  camera framing checks passed
@@ -761,10 +766,18 @@ Each of these is now covered by a named regression test:
     assassin's blink had the same latent flaw and uses it too. The regression test drives the
     real attack and then a real frame, and fails with 36 of 206 blinks escaping if the old
     check is restored.
+25. **Burning dealt two and a half times its stated damage.** Found while reworking the magic
+    weapons: `burnDamage` is documented as damage per *second*, but the burn tick applied it
+    *flat* once every 0.4s. A 6 dps burn was really 15 dps, so the Fire Staff's burn — 6.5
+    ticks over its 2.6s duration — added 39 damage to every bolt that landed it, nearly twice
+    the projectile's own 22. Every fire source in the game was affected: the Fire Staff, the
+    Hellstorm and the incendiary ultimate. The tick now carries `rate × interval`, which is
+    what the field always claimed, and the regression test fails with 40 damage where it
+    expects 20 if the old line is restored.
 
 ### Combat additions beyond the design document
 
-Four deliberate departures, all driven by play feedback rather than preference. Each is
+Five deliberate departures, all driven by play feedback rather than preference. Each is
 confined to one system so it can be reverted in isolation.
 
 1. **Melee parry.** The document gives ranged enemies (§3, §6) and their projectiles no
@@ -789,6 +802,36 @@ confined to one system so it can be reverted in isolation.
    readiness bar in the HUD. It gives a melee class a way to close the last stretch to a
    ranged enemy, and it deliberately grants no invulnerability frames so it cannot trivialise
    boss patterns.
+5. **Every staff has two firing modes.** The document gives the mage one attack per weapon;
+   each of the four staffs now fires bolts on the left button and a held **beam** on the
+   right. The mechanism is shared and the numbers are not: a raycast to the first wall, a
+   damage tick, and a heat gauge that locks the staff out until it is released and cooled —
+   with the rate, the reach, the status it inflicts and whether it stops at the first body
+   all coming from the weapon's own `beam` block.
+
+   | Staff | Bolts (LMB) | Beam (RMB) |
+   | --- | --- | --- |
+   | Fire Staff | 22 dmg, 0.50s, burns | 30 dps, 400px, keeps the target alight |
+   | Ice Staff | 15 dmg, 0.40s, slows | 20 dps, 380px, near-freezes it — the slow is refreshed every tick |
+   | Lightning Staff | 17 dmg, 0.28s, chains | 22 dps **ramping to 78** over 2.2s of holding, 460px |
+   | Staff of the Void | 30 dmg, 0.42s, pierces and explodes | 34 dps, 420px, **pierces every body in the line** |
+
+   The trade is deliberate. A beam cannot miss and never runs out of ammunition, so it
+   reaches less far than a bolt volley and deals less per second than the burst it replaces;
+   what it sells is reliability. The gauge is what stops it from being the only button worth
+   pressing: it lasts 3.2 seconds, and a locked staff does not cool while the button is held,
+   so an overheat costs a release plus the cooldown. The lightning ramp is the one exception
+   in the other direction — the staff gets *stronger* the longer it is held, which turns the
+   gauge into a decision rather than a limit.
+
+   Per-frame cost is bounded by construction, because this is the only attack in the game
+   that is paid every frame rather than once per shot: one raycast, at most `maxTargets` hit
+   volumes, one beam and one impact glow. `tools/frame-cost.mjs` measures a beam held down a
+   line of eight bodies (save 88, arc 81, 6 particles) and fails the build if it grows.
+
+   The four staffs also got their own silhouettes — a brazier, a shard cluster, a forked rod
+   and a shard in a counter-rotating halo — and each head opens and lights up while the beam
+   is live, so the firing mode is readable from the character rather than only from the HUD.
 
 ### Melee balance pass
 

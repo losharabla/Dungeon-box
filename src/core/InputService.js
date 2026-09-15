@@ -34,6 +34,14 @@ export class InputService {
     this.mouseDown = false;
     this.mousePressed = false;
     this.mouseReleased = false;
+    /**
+     * The right button, which fires the beam mode of a magic weapon. Tracked
+     * separately from the left button rather than as a "secondary" flag: the
+     * two are independent weapons, and a player holding both should get both.
+     */
+    this.beamDown = false;
+    this.beamPressed = false;
+    this.beamReleased = false;
     /** @type {number} wheel delta accumulated this frame */
     this.wheel = 0;
 
@@ -67,6 +75,14 @@ export class InputService {
     };
 
     const onMouseDown = (/** @type {MouseEvent} */ e) => {
+      // Right button: the beam. The context menu it would normally open is
+      // suppressed below, so this is a free button.
+      if (e.button === 2) {
+        e.preventDefault();
+        if (!this.beamDown) this.beamPressed = true;
+        this.beamDown = true;
+        return;
+      }
       if (e.button !== 0) return;
       e.preventDefault();
       if (!this.mouseDown) this.mousePressed = true;
@@ -74,6 +90,11 @@ export class InputService {
     };
 
     const onMouseUp = (/** @type {MouseEvent} */ e) => {
+      if (e.button === 2) {
+        this.beamDown = false;
+        this.beamReleased = true;
+        return;
+      }
       if (e.button !== 0) return;
       this.mouseDown = false;
       this.mouseReleased = true;
@@ -147,6 +168,9 @@ export class InputService {
     this.mouseDown = false;
     this.mousePressed = false;
     this.mouseReleased = false;
+    this.beamDown = false;
+    this.beamPressed = false;
+    this.beamReleased = false;
     this.wheel = 0;
   }
 
@@ -225,6 +249,8 @@ export class InputService {
     this._released.clear();
     this.mousePressed = false;
     this.mouseReleased = false;
+    this.beamPressed = false;
+    this.beamReleased = false;
     this.wheel = 0;
   }
 }

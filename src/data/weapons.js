@@ -48,6 +48,33 @@
  * @property {number} [arc]                   melee swing arc in radians
  * @property {number} [swingTime]             melee animation duration (seconds)
  * @property {number} [staminaCost]           reserved for future use
+ * @property {WeaponBeamDef} [beam]           magic weapons only: the held right-button mode
+ */
+
+/**
+ * The held beam of a magic weapon (right mouse button).
+ *
+ * Status fields (`burnChance`, `slowChance`, …) are inherited from the weapon
+ * itself: the beam spec is merged over the weapon before it is applied, so a
+ * staff only states what its beam does *differently*. `damage` is a rate, not
+ * a per-tick figure — `CONFIG.beam.tickRate` decides how it is sliced, and the
+ * slice is what actually lands.
+ *
+ * @typedef {object} WeaponBeamDef
+ * @property {number} damage          damage per second while the beam is held
+ * @property {number} range           reach in pixels, before the first wall
+ * @property {string} color           the beam's own colour, used by the renderer
+ * @property {boolean} [pierce]       true: shines through every body in the path
+ * @property {number} [rampTime]      seconds of sustained fire to reach `damageMax`
+ * @property {number} [damageMax]     damage per second at the end of the ramp
+ * @property {number} [halfWidth]     drawn half-width override
+ * @property {'ray'|'arc'} [shape]    drawn shape: a straight ray or a crackling arc
+ * @property {number} [burnChance]    per-tick chance, overriding the weapon's
+ * @property {number} [slowChance]    per-tick chance, overriding the weapon's
+ * @property {number} [slowFactor]
+ * @property {number} [slowDuration]
+ * @property {number} [burnDuration]
+ * @property {number} [burnDamage]
  */
 
 /** Cooldown floor so an extreme attack-speed roll can never divide by ~0. */
@@ -119,10 +146,18 @@ export const WEAPONS = {
     burnChance: 0.75,
     burnDuration: 2.6,
     burnDamage: 6,
-    desc: 'Fire projectiles that set the target alight.',
+    desc: 'Fire bolts that set the target alight. Hold the right button for a burning beam.',
     projectile: {
       speed: 520, life: 1.25, radius: 8, visual: 'fire',
       explosionRadius: 34, explosionChance: 0.15,
+    },
+    // The beam is the reliable mode: less damage than the bolts, but it
+    // cannot miss and it keeps the target alight while it is held.
+    beam: {
+      damage: 30, range: 400, color: '#ff8a3d',
+      // Fires a little more often per tick than the bolts do per shot, so a
+      // beamed target is essentially always burning.
+      burnChance: 0.3, burnDuration: 2.2, burnDamage: 6,
     },
   },
 
@@ -138,8 +173,14 @@ export const WEAPONS = {
     slowChance: 0.95,
     slowFactor: 0.45,
     slowDuration: 2.4,
-    desc: 'Less damage, but it reliably slows enemies down.',
+    desc: 'Ice bolts that slow enemies down. Hold the right button for a freezing ray.',
     projectile: { speed: 560, life: 1.2, radius: 7, visual: 'ice' },
+    // The slow is refreshed every tick, so what the beam really sells is the
+    // *hold*: it pins a body in place for as long as the mage keeps aiming.
+    beam: {
+      damage: 20, range: 380, color: '#7fd8ff',
+      slowChance: 1, slowFactor: 0.35, slowDuration: 0.6,
+    },
   },
 
   lightning_staff: {
@@ -152,8 +193,15 @@ export const WEAPONS = {
     range: 680,
     knockback: 60,
     chainChance: 0.3,
-    desc: 'Fast projectiles with a chance to chain lightning.',
+    desc: 'Fast bolts that can chain lightning. Hold the right button for a beam that builds up.',
     projectile: { speed: 760, life: 1.0, radius: 5, visual: 'lightning' },
+    // The only beam that gets stronger the longer it is held, which is what
+    // makes the heat gauge a decision: hold through the ramp and risk the
+    // lock-out, or feather it and never reach the top.
+    beam: {
+      damage: 22, range: 460, color: '#ffe14d', shape: 'arc',
+      rampTime: 2.2, damageMax: 78,
+    },
   },
 
   /* ---------------- Gunner — normal (§9.7-9.10) ---------------- */
@@ -243,10 +291,16 @@ export const WEAPONS = {
     cooldown: 0.42,
     range: 900,
     knockback: 90,
-    desc: 'Projectiles pass through enemies and explode on impact.',
+    desc: 'Bolts that pass through enemies and explode. Hold the right button for a beam that pierces everything.',
     projectile: {
       speed: 700, life: 1.6, radius: 11, visual: 'void',
       pierce: 99, explosionRadius: 74, explosionChance: 0.5,
+    },
+    // The only beam that does not stop at the first body: it is the reward for
+    // lining a pack up, and the reason it deals less per second than the
+    // lightning ramp reaches.
+    beam: {
+      damage: 34, range: 420, color: '#c05cff', pierce: true,
     },
   },
 
