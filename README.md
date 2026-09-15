@@ -75,6 +75,7 @@ Any other static server works equally well (e.g. `python -m http.server`).
 
 ## Contents
 
+- [Running the game](#running-the-game) · [Controls](#controls)
 - [Performance and presentation](#performance-and-presentation) — why an exotic weapon does not cost more per frame
 - [Architecture](#architecture) — the module map, the frame pipeline, and the object graph
 - [SOLID mapping](#solid-mapping) — how each principle is realised, with the file that shows it

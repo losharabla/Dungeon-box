@@ -27,8 +27,8 @@ jobs:
         # LTS and 24 is what development happens on.
         node: ['20', '22', '24']
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
       - name: Unit, DOM, graphics, balance, audio and frame budgets
@@ -38,8 +38,8 @@ jobs:
     name: long simulations
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
       - name: Silhouette coverage
@@ -57,8 +57,8 @@ jobs:
     name: screenshots are current
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
       # The committed images in docs/screenshots are generated output. This job
