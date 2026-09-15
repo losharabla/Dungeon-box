@@ -1,0 +1,74 @@
+# Headless checks.
+#
+# The game has zero dependencies and no build step, so CI is just Node running
+# the suites — there is nothing to install, nothing to bundle and nothing to
+# cache. That is also why the whole suite runs in seconds: every test drives the
+# real modules against a stubbed DOM, a recording 2D context or a seeded RNG.
+
+name: tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: checks (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # package.json declares engines >= 18; 20 is the oldest still-supported
+        # LTS and 24 is what development happens on.
+        node: ['20', '22', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Unit, DOM, graphics, balance, audio and frame budgets
+        run: npm test
+
+  simulations:
+    name: long simulations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Silhouette coverage
+        run: npm run test:hitboxes
+      - name: Late-arena survivability
+        run: npm run test:survivability
+      - name: Campaign soak
+        run: npm run test:soak
+      - name: Every arena is clearable
+        run: npm run test:arenas
+      - name: Every class beats every boss
+        run: npm run test:campaign
+
+  screenshots:
+    name: screenshots are current
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # The committed images in docs/screenshots are generated output. This job
+      # does not compare pixels — the capture depends on frame timing — it only
+      # proves the tool still runs against the current game and that the server
+      # it drives still serves what the screenshots need.
+      - name: Capture a fresh set into a scratch directory
+        run: |
+          node tools/serve.mjs 8080 &
+          sleep 1
+          node tools/screenshot.mjs --out /tmp/shots --only menu,characters --no-sandbox
+      - name: Check the capture produced files
+        run: test -s /tmp/shots/menu.png && test -s /tmp/shots/characters.png

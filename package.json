@@ -22,7 +22,8 @@
     "test:runs": "node tools/simulate-run.mjs 9 2400",
     "test:campaign": "node tools/simulate-floors.mjs",
     "test:all": "npm run test && npm run test:hitboxes && npm run test:survivability && npm run test:soak && npm run test:arenas && npm run test:campaign",
-    "preview": "node tools/render-frame.mjs tools/frame.png warrior whirlwind arena"
+    "preview": "node tools/render-frame.mjs tools/frame.png warrior whirlwind arena",
+    "shots": "node tools/screenshot.mjs"
   },
   "engines": {
     "node": ">=18"

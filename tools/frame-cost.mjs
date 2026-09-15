@@ -24,7 +24,7 @@
  *     browser a canvas context lives for the whole session, so a per-frame
  *     cost that only appears on the first frame is not a per-frame cost.
  *
- * Run with:  node tools/frame-cost.mjs
+ * Run with:  node tools/frame-cost.mjs [seed]
  * Exits 1 when a budget is missed.
  */
 
@@ -35,6 +35,24 @@ import { StateMachine } from '../src/core/StateMachine.js';
 
 globalThis.performance ??= { now: () => Date.now() };
 globalThis.window ??= { devicePixelRatio: 1, addEventListener() {}, removeEventListener() {} };
+
+/**
+ * Seed `Math.random` so the counts are reproducible.
+ *
+ * Combat rolls (crits, explosions) and every particle's velocity come from
+ * `Math.random`, so the live-particle figure for one scene varies by tens of
+ * percent run to run. A budget can only be a regression guard if the number it
+ * guards does not move on its own.
+ */
+const SEED = Number(process.argv[2] ?? 20260915);
+let _rngState = SEED >>> 0 || 1;
+Math.random = () => {
+  _rngState = (_rngState + 0x6d2b79f5) >>> 0;
+  let t = _rngState;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
 
 const { Game } = await import('../src/game/Game.js');
 const { SceneRenderer } = await import('../src/rendering/SceneRenderer.js');
@@ -196,6 +214,14 @@ function makeRecorder() {
  * @param {{classId?: string, ultimateId?: string, weaponId?: string}} [opts]
  */
 function measure(label, setup, opts = {}) {
+  // Every scene starts from the same random stream, for the same reason the
+  // profiler is seeded: crit and explosion rolls and each particle's velocity
+  // come from `Math.random`, so an unseeded live-particle count moves by tens
+  // of percent between runs. The void-staff particle budget sits close enough
+  // to the observed spread that an unseeded run would fail it at random, which
+  // is a flaky test rather than a regression.
+  _rngState = (SEED ^ (label.length * 2654435761)) >>> 0 || 1;
+
   const bus = new EventBus();
   const game = new Game({
     bus,

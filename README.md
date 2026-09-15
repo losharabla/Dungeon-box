@@ -1,12 +1,91 @@
 # Roguelike Prototype
 
-A complete 2D roguelike prototype for the browser: **HTML5 Canvas + vanilla JavaScript ES modules**.
-No build step, no bundler, no framework, and **not a single external image asset** — every
-character, weapon, boss, wall and effect is drawn procedurally with Canvas primitives. Sound
-effects are synthesised the same way; the one asset in the repository is the original music
-track in `assets/music/`.
+A complete 2D roguelike for the browser: **HTML5 Canvas + vanilla JavaScript ES modules**.
+No build step, no bundler, no framework, **zero runtime dependencies** — and **not a single
+image asset**. Every character, weapon, boss, wall and effect is drawn with Canvas 2D
+primitives, and every sound effect is synthesised with the Web Audio API. The one binary in
+the repository is the original music track in `assets/music/`.
+
+**3 classes · 10 enemies · 3 bosses · 9 ultimates · 13 weapons · 4 room types · one run of choices**
+
+[![tests](https://github.com/losharabla/Rogalik/actions/workflows/ci.yml/badge.svg)](https://github.com/losharabla/Rogalik/actions/workflows/ci.yml)
+[![headless checks](https://img.shields.io/badge/headless%20checks-136%20in%20the%20fast%20gate-success.svg)](#tests)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen.svg)](package.json)
+[![node](https://img.shields.io/badge/node-%E2%89%A518-informational.svg)](package.json)
+
+![The Stone Golem telegraphs a slam while a meteor comes down on it](docs/screenshots/boss.png)
+
+| Main menu | Choose a class and an ultimate |
+| --- | --- |
+| ![Main menu](docs/screenshots/menu.png) | ![Class and ultimate select](docs/screenshots/characters.png) |
+| **Fight in an arena** | **Buy from the merchant** |
+| ![A wave of enemies in an arena](docs/screenshots/arena.png) | ![The merchant's stock](docs/screenshots/shop.png) |
+| **Take the altar's blessing** | **Pause and the sound mixer** |
+| ![The healing altar](docs/screenshots/altar.png) | ![The pause screen with the mixer](docs/screenshots/pause.png) |
+
+*Real frames from a real browser, captured by `npm run shots`. `tools/screenshot.mjs` launches
+headless Chrome over the DevTools protocol and plays the game with actual key and mouse
+events; the only game state it sets for itself is skipping through doors and handing the
+merchant a customer with gold to spend. Nothing is mocked, and the HUD is the real DOM.*
 
 The implementation follows the design document (`диздок.txt`) in this folder.
+
+---
+
+## Running the game
+
+**Double-click `ЗАПУСТИТЬ.bat`.** It opens a console, starts the local server and opens the
+game in the browser. Closing that console window stops the server. Node.js must be installed
+([nodejs.org](https://nodejs.org/)); the launcher says so instead of vanishing if it is missing.
+
+ES modules cannot be loaded from `file://`, so the game needs *a* static server, and the same
+zero-dependency server can be run by hand:
+
+```bash
+node tools/serve.mjs                  # local only, first free port
+node tools/serve.mjs 3000             # a specific port
+node tools/serve.mjs --open           # open the browser as well
+node tools/serve.mjs --host 0.0.0.0   # allow other devices on the network
+node tools/serve.mjs --help           # usage
+```
+
+The server binds `127.0.0.1` (local only) and prints the address it *actually* uses. If the
+requested port is reserved by Windows (`EACCES`) or already taken (`EADDRINUSE`), it moves to
+the next candidate automatically and opens the browser at the right address. That is not
+theoretical: Hyper-V, WSL and Docker reserve blocks of the Windows port range and re-roll them
+on reboot (`winnat` restart), which is why binding `8080` can work one day and fail the next.
+
+Any other static server works equally well (e.g. `python -m http.server`).
+
+### Controls
+
+| Input | Action |
+| --- | --- |
+| `W` `A` `S` `D` | Move |
+| Mouse | Aim |
+| Left mouse button | Attack — a melee swing also destroys enemy projectiles in its arc |
+| `Space` | Dash — a short burst of speed in the movement direction |
+| `Q` | Ultimate (once charged to 100%) |
+| `E` | Interact — shop, healing altar, doors |
+| `ESC` | Pause |
+| Walking into an open door | Travel to the room that door leads to |
+
+---
+
+## Contents
+
+- [Performance and presentation](#performance-and-presentation) — why an exotic weapon does not cost more per frame
+- [Architecture](#architecture) — the module map, the frame pipeline, and the object graph
+- [SOLID mapping](#solid-mapping) — how each principle is realised, with the file that shows it
+- [Content](#content-mvp-scope-32) — what ships, and the rules the art follows
+- [Procedural audio](#procedural-audio) · [Music](#music) — synthesis, voice budget, streaming
+- [Tests](#tests) — 140+ headless checks and what each suite is for
+- [Bugs found by these tests and fixed](#bugs-found-by-these-tests-and-fixed) — 23 of them, with measurements
+- [Combat additions beyond the design document](#combat-additions-beyond-the-design-document)
+- [Melee balance pass](#melee-balance-pass) — what "the warrior is too hard" measured as
+- [Deliberate scope choices](#deliberate-scope-choices) · [Extending the game](#extending-the-game)
+- [License](#license)
 
 ---
 
@@ -66,50 +145,11 @@ npm run test:soak          long campaign/resource soak and emission-budget check
 npm run test:arenas        12 arena clearability simulations
 npm run test:campaign      all class/ultimate campaigns through 3 bosses
 npm run preview            procedural gameplay PNG preview
+npm run shots              re-shoot the screenshots in docs/screenshots/
 ```
 
 Measured frame-cost probes stay within budget: approximately 6.6x overdraw in
 busy arenas and 8.2x in boss rooms, with three cached layer blits per frame.
-
-## Running the game
-
-**Double-click `ЗАПУСТИТЬ.bat`.** It opens a console, starts the local server and opens the
-game in the browser. Closing that console window stops the server. Node.js must be installed
-([nodejs.org](https://nodejs.org/)); the launcher says so instead of vanishing if it is missing.
-
-ES modules cannot be loaded from `file://`, so the game needs *a* static server, and the same
-zero-dependency server can be run by hand:
-
-```bash
-node tools/serve.mjs                  # local only, first free port
-node tools/serve.mjs 3000             # a specific port
-node tools/serve.mjs --open           # open the browser as well
-node tools/serve.mjs --host 0.0.0.0   # allow other devices on the network
-node tools/serve.mjs --help           # usage
-```
-
-The server binds `127.0.0.1` (local only) and prints the address it *actually* uses. If the
-requested port is reserved by Windows (`EACCES`) or already taken (`EADDRINUSE`), it moves to
-the next candidate automatically and opens the browser at the right address. That is not
-theoretical: Hyper-V, WSL and Docker reserve blocks of the Windows port range and re-roll them
-on reboot (`winnat` restart), which is why binding `8080` can work one day and fail the next.
-
-Any other static server works equally well (e.g. `python -m http.server`).
-
-### Controls
-
-| Input | Action |
-| --- | --- |
-| `W` `A` `S` `D` | Move |
-| Mouse | Aim |
-| Left mouse button | Attack — a melee swing also destroys enemy projectiles in its arc |
-| `Space` | Dash — a short burst of speed in the movement direction |
-| `Q` | Ultimate (once charged to 100%) |
-| `E` | Interact — shop, healing altar, doors |
-| `ESC` | Pause |
-| Walking into an open door | Travel to the room that door leads to |
-
----
 
 ## Architecture
 
@@ -175,7 +215,8 @@ imports a global `game` object; every system receives what it needs through its 
 │   │   ├── LootSystem.js         Rewards and shop stock
 │   │   └── UltimateSystem.js     The 9 ultimate abilities
 │   │
-│   ├── rendering/          Procedural Canvas drawing (§23–§25)│   │   ├── RenderSystem.js       Canvas ownership, scaling, camera, shake
+│   ├── rendering/          Procedural Canvas drawing (§23–§25)
+│   │   ├── RenderSystem.js       Canvas ownership, scaling, camera, shake
 │   │   ├── SceneRenderer.js      Draw ordering for the whole scene
 │   │   ├── drawUtils.js          Reusable Canvas primitives
 │   │   ├── characterRenderer.js  Humanoid rig + every enemy silhouette
@@ -208,6 +249,9 @@ imports a global `game` object; every system receives what it needs through its 
 │   └── music/              The only binary asset in the project
 │       └── shadow-labyrinth.mp3   Original score, 2:52, 48 kHz stereo
 │
+├── docs/
+│   └── screenshots/        Generated by `npm run shots` (see below)
+│
 └── tools/                  Development tooling (not shipped with the game)
     ├── serve.mjs              Zero-dependency static server (+ port auto-pick)
     ├── NavGrid.mjs            Grid pathfinder used by the simulation bots
@@ -227,11 +271,16 @@ imports a global `game` object; every system receives what it needs through its 
     ├── input-regression.mjs   Letterboxed input coordinate mapping
     ├── ui-cache-regression.mjs  HUD element caching
     ├── render-frame.mjs       Software rasteriser: writes a frame to a PNG
+    ├── screenshot.mjs         Headless-browser capture of the README screenshots
     ├── render-alignment.mjs   Writes hud-alignment.svg (visual proof of the band)
     ├── verify-arenas.mjs      Proves every arena is clearable
     ├── simulate-run.mjs       Headless full-run simulator
     └── simulate-floors.mjs    Multi-floor campaign test
 ```
+
+`docs/screenshots/` holds the images embedded at the top of this file. They are generated
+output, not source: `npm run shots` re-shoots them from a live browser whenever the visuals
+change.
 
 ### The frame pipeline
 
@@ -457,12 +506,24 @@ npm run test:arenas   # proves every arena is clearable
 npm run test:campaign # all 6 class/ultimate combos through all 3 floors
 npm run test:runs     # 9 simulated runs with coverage reporting
 npm run test:all      # everything
-npm run preview       # render one frame to tools/frame.png
+npm run preview       # render one frame to tools/frame.png (software rasteriser)
+npm run shots         # re-shoot docs/screenshots/ in a real headless browser
 ```
 
-Current status (verified locally):
+`npm test` is the fast gate and runs on every push; `npm run test:all` adds the long
+simulations (soak, arena clearability, full campaigns) that take minutes rather than seconds.
 
-Latest verification also recorded: frame-cost budgets passed (busy arena: 0 radial / 0 linear gradients, 6.8x overdraw, boss room 8.2x) plus baked-layer wall coverage checks; `npm run test:soak` passed 6/6 checks across 8 floors, 48 rooms and 8 boss fights (peak: 386 particles, 17 projectiles); `npm run test:hitboxes` reported 13/13 drawn silhouettes covered; `npm run test:arenas` cleared 12/12 arenas (12.5s average, 16.1s slowest); `npm run test:survivability` passed 7/7 with the melee class ahead of its pre-fix self in every measure; `npm run test:campaign` completed all 6 class/ultimate campaigns.
+Everything below was measured on this machine, not estimated:
+
+- `npm run test:soak` — 6/6 across 8 floors, 48 rooms and 8 boss fights (peak 386 particles,
+  17 projectiles).
+- `npm run test:hitboxes` — 13/13 drawn silhouettes covered by their combat box.
+- `npm run test:arenas` — 12/12 arenas cleared (12.5s average, 16.1s slowest).
+- `npm run test:survivability` — 7/7, with the melee class ahead of its pre-fix self on every
+  measure.
+- `npm run test:campaign` — 6/6, every class/ultimate pair through all three floors.
+- `tools/frame-cost.mjs` (part of `npm test`) — every per-frame budget met: busy arena 6.8x
+  overdraw, boss room 8.2x, and no radial or linear gradients in a steady frame.
 
 ```
   44/44 unit + regression checks passed
@@ -598,13 +659,7 @@ Each of these is now covered by a named regression test:
     `releaseCamera()`, so it drew at raw screen coordinates while being handed a
     world-space point. It only lined up when the camera happened to sit at the origin.
     Fixed by drawing it inside the camera transform.
-14. **The HUD did not line up with the world.** The canvas letterboxes a fixed 1280×720
-    logical view into the window, but the DOM HUD used `inset: 0` and so spanned the whole
-    window. At 1920×931 — which produces 132px bars on each side — the room-map strip and
-    the bottom-corner labels drifted away from the things they label. Fixed by having
-    `RenderSystem.resize()` publish the letterbox band as `--view-*` CSS custom properties,
-    which `.hud` and `.overlay` now consume.
-15. **The camera never followed the player in the browser.** `main.js` created a `Camera` and
+14. **The camera never followed the player in the browser.** `main.js` created a `Camera` and
     handed it to `RenderSystem`, while `Game` constructed a *second* `Camera` for itself and
     updated only that one. Every camera test passed, because each inspected `game.camera` in
     isolation — and the offscreen frame renderer happened to inject `game.camera` explicitly,
@@ -615,13 +670,13 @@ Each of these is now covered by a named regression test:
     `Game`, so the composition root hands `RenderSystem` and `Game` the same instance. The
     boot suite now asserts `render.camera === game.camera` and that the rendered view tracks
     the player end to end.
-16. **The room strip hung in the middle of the screen.** `.hud` is a flex column and the room
+15. **The room strip hung in the middle of the screen.** `.hud` is a flex column and the room
     strip is its second child. With `justify-content: space-between` the free space was
     distributed between the rows, which parked that strip in the exact vertical centre of the
     view instead of under the top row. Fixed by stacking the top rows (`flex-start`) and
     letting only the bottom group consume the leftover space with `margin-top: auto`; the
     contextual hint was moved out of the flow so its appearance cannot shift the rows.
-17. **Distance-keeping enemies could not be caught.** The skeleton and the mage retreated at
+16. **Distance-keeping enemies could not be caught.** The skeleton and the mage retreated at
     their full movement speed, so against a retreating skeleton the warrior closed the gap at
     28 px/s — about 6% of its own speed. Technically faster, but the fight read as an endless
     chase and was effectively unwinnable for a melee class. Fixed in two places: retreating is
@@ -631,12 +686,12 @@ Each of these is now covered by a named regression test:
     (was 28 px/s) and a warrior reaches melee range in under 2s. Guarded by a data invariant
     *and* by measuring the skeleton's real retreat speed, because the data can claim a
     multiplier the AI never applies.
-18. **The advertised dash did nothing.** The help screen listed "Пробел — рывок" from the
+17. **The advertised dash did nothing.** The help screen listed "Пробел — рывок" from the
     first build, but nothing was ever bound to `Space`: the key was swallowed by
     `InputService` (to stop the page scrolling) and then ignored. Fixed by implementing the
     ability rather than deleting the line — see the additions below. The readiness bar only
     appeared afterwards, because an ability with a cooldown and no feedback is unusable.
-19. **The run dead-ended after the first boss.** Beating a middle boss printed "дверь
+18. **The run dead-ended after the first boss.** Beating a middle boss printed "дверь
     открыта", but a boss node has no doors to the next floor (§19 ends at the boss), and the
     victory screen — the only way forward — was shown for the final boss alone. The fix
     shows the victory screen after *every* boss: the reward overlay closes first (it lives
@@ -646,25 +701,25 @@ Each of these is now covered by a named regression test:
     The campaign simulation could not catch this because it called `game.nextFloor()`
     directly, bypassing the UI — the flow is now driven by the real button click in
     `dom-test.mjs` instead.
-20. **Hellstorm shook the camera non-stop.** Muzzle shake was keyed to the weapon's
+19. **Hellstorm shook the camera non-stop.** Muzzle shake was keyed to the weapon's
     *rarity* (`legendary ? 3 : 1.6`), so the Hellstorm asked for a 3.0 impulse on every round.
     At 24 rounds a second under full heat the camera never got a chance to decay: measured
     sustained jitter was 10.7px (41% of the 26px cap) versus 3-5px for every one-shot event in
     the game. Shake now scales with the shot's computed recoil, so it tracks the weight of the
     blow: sustained Hellstorm fire peaks at 3.7px, while a single Sniper round still asks for
     more than a single Pistol round.
-21. **The Sniper Rifle could never break a shield.** A blocked hit drained a flat 12 stamina,
+20. **The Sniper Rifle could never break a shield.** A blocked hit drained a flat 12 stamina,
     and a shieldbearer regenerates 9/s. The rifle's 1.35s cooldown returned 12.15 stamina —
     more than a round had taken — so its 78-damage shots blocked forever, no matter how long
     the player aimed. Blocking now strains by the weight of the blow (a Sniper round costs
     ~25 stamina): the guard drops in 8 shots, while light bullets still need sustained pressure
     and a shotgun pellet spread still threatens it.
-22. **Bosses guaranteed a legendary weapon.** `_bossReward` always handed out the first
+21. **Bosses guaranteed a legendary weapon.** `_bossReward` always handed out the first
     legendary of the player's class, so finishing the campaign meant ending fully kitted and
     the rarest tier (§10) stopped being rare. The roll moved to `LootSystem.rollBossReward`
     and is now a 35% chance per boss (`CONFIG.loot.bossLegendaryChance`); three bosses still
     make a boss the best legendary source in the game (~1 in 2 runs) without a certainty.
-23. **The player's documented post-hit invulnerability did not exist.**
+22. **The player's documented post-hit invulnerability did not exist.**
     `CONFIG.combat.playerHurtIframe` was declared and commented as "invulnerability window
     after the player takes a hit", and `CombatSystem` did honour `status.isInvulnerable()` —
     but nothing ever *applied* that status on being hit: the only source was the
@@ -677,7 +732,7 @@ Each of these is now covered by a named regression test:
     time, and disabled by a value of 0. The class-by-class before/after is measured by
     `npm run test:survivability`: the warrior goes from clearing 2/5 late arenas at 16% HP to
     4/5 at 36%, and takes 24% less damage.
-24. **Humanoids could not be hit above the knees.** Sprites are drawn standing *above* their
+23. **Humanoids could not be hit above the knees.** Sprites are drawn standing *above* their
     ground point, but every hit test used a circle centred on that point (an 18px radius for
     the orc). An orc is painted 70px tall, so a shot aimed at its chest or head simply flew
     through it — measured coverage of its own silhouette was **3%**. It was worst on the
@@ -728,7 +783,7 @@ feeling — measured over five late arenas with the same bot, the warrior cleare
 
 | Change | File | Before → after |
 | --- | --- | --- |
-| Post-hit mercy window (bug #23) | `CombatSystem` + `Config.js` | none → 0.4s |
+| Post-hit mercy window (bug #22) | `CombatSystem` + `Config.js` | none → 0.4s |
 | Starting blade | `data/weapons.js` | 18 / 0.44s (40.9 DPS) → 22 / 0.40s (55 DPS) |
 | Battle Axe / War Hammer | `data/weapons.js` | 32 (39 DPS) / 52 (45.2) → 37 (45.1) / 62 (53.9) |
 | Warrior speed | `data/classes.js` | 3 (138 px/s) → 3.4 (156 px/s) |
