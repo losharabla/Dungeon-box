@@ -23,7 +23,7 @@
 export const CLASSES = {
   warrior: {
     id: 'warrior',
-    name: 'Воин',
+    name: 'Warrior',
     role: 'melee bruiser',
     passiveUltCharge: true,
     hp: 150,
@@ -40,12 +40,12 @@ export const CLASSES = {
     bodyRadius: 16,
     color: '#8792a8',
     accent: '#c0392b',
-    desc: 'Много HP, сильные удары, мощный knockback. Ближний бой.',
+    desc: 'High HP, heavy blows, strong knockback. Melee.',
   },
 
   mage: {
     id: 'mage',
-    name: 'Маг',
+    name: 'Mage',
     role: 'ranged AoE / control',
     hp: 80,
     damage: 20,
@@ -55,12 +55,12 @@ export const CLASSES = {
     bodyRadius: 14,
     color: '#6f7fd6',
     accent: '#7fd8ff',
-    desc: 'Низкое HP, высокий урон, контроль пространства и AoE.',
+    desc: 'Low HP, high damage, area control and AoE.',
   },
 
   gunner: {
     id: 'gunner',
-    name: 'Стрелок',
+    name: 'Gunner',
     role: 'ranged DPS / mobility',
     hp: 100,
     damage: 12,
@@ -70,7 +70,7 @@ export const CLASSES = {
     bodyRadius: 15,
     color: '#b08a5a',
     accent: '#ffbe4d',
-    desc: 'Быстрый, скорострельный, сильно зависит от оружия.',
+    desc: 'Fast and quick-firing, and heavily dependent on its weapon.',
   },
 };
 

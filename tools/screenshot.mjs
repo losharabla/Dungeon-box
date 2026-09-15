@@ -586,15 +586,20 @@ async function playAndPick(cdp, ctx, pick) {
     const world = await cdp.eval('window.__shot.world()');
     if (!world) break;
 
-    // Never ship a shot of a dead player or a near-death bar.
-    if (world.alive) {
+    // A frame is only a candidate if the player is alive and not about to
+    // die. The busiest frame of a fight is very often the one where the
+    // health bar is nearly empty, and "a screenshot of a losing fight" is not
+    // a good look for the game however many particles are in it.
+    const healthy = world.alive && world.hp >= world.maxHp * 0.3;
+    if (healthy) {
       const score = pick.score(world);
       const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
       if (!best || score > best.score) best = { data, world, score };
       debug(`candidate score ${score} (hp ${world.hp}/${world.maxHp}, ${world.enemies} enemies, ${world.particles} particles)`);
+    } else {
+      debug(`skipped candidate (hp ${world.hp}/${world.maxHp})`);
+      break;
     }
-
-    if (!world.alive || world.hp < world.maxHp * 0.3) break;
   }
 
   return best;
@@ -649,7 +654,7 @@ const SHOTS = [
       // Pick the mage so the shot shows a class other than the default.
       await cdp.eval(`(() => {
         const cards = [...document.querySelectorAll('#class-grid > *')];
-        const mage = cards.find((c) => /маг/i.test(c.textContent)) || cards[1];
+        const mage = cards.find((c) => /mage/i.test(c.textContent)) || cards[1];
         if (mage) mage.click();
         return cards.length;
       })()`);

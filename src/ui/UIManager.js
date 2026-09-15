@@ -35,9 +35,9 @@ import { NULL_AUDIO_CONTROLS, UI_BACK, UI_CLICK } from '../audio/audioControls.j
 
 /** Mixer rows, in the order they appear in both menus. */
 const AUDIO_ROWS = /** @type {const} */ ([
-  { key: 'master', label: 'Общая громкость' },
-  { key: 'music', label: 'Музыка' },
-  { key: 'effects', label: 'Эффекты' },
+  { key: 'master', label: 'Master volume' },
+  { key: 'music', label: 'Music' },
+  { key: 'effects', label: 'Effects' },
 ]);
 
 export class UIManager {
@@ -235,7 +235,7 @@ export class UIManager {
     // Ultimate label reflects readiness, which doubles as the "ULT READY"
     // indicator the design document asks for (§21).
     const ultLabel = player.ultReady
-      ? `${getUltimate(player.ultimateId).name} — ГОТОВО`
+      ? `${getUltimate(player.ultimateId).name} — READY`
       : getUltimate(player.ultimateId).name;
     if (ultLabel !== c.ultLabel) {
       c.ultLabel = ultLabel;
@@ -281,8 +281,8 @@ export class UIManager {
     this._cache.rooms = signature;
 
     this.el.rooms.innerHTML =
-      `<span>ЭТАЖ ${floorIndex + 1}</span>`
-      + `<span class="step">КОМНАТА ${depth + 1} / ${layers}</span>`;
+      `<span>FLOOR ${floorIndex + 1}</span>`
+      + `<span class="step">ROOM ${depth + 1} / ${layers}</span>`;
   }
 
   /**
@@ -387,7 +387,7 @@ export class UIManager {
       }
       for (const mute of container.querySelectorAll('.setting-mute')) {
         const muted = settings.muted === true;
-        mute.textContent = muted ? 'Звук: выключен' : 'Звук: включён';
+        mute.textContent = muted ? 'Sound: off' : 'Sound: on';
         mute.classList.toggle('muted', muted);
       }
     }
@@ -436,7 +436,7 @@ export class UIManager {
         <div>HP<span>${def.hp}</span></div>
         <div>Damage<span>${def.damage}</span></div>
         <div>Speed<span>${def.speed}</span></div>
-        <div>Range<span>${def.attackRange === 'short' ? 'ближний' : 'дальний'}</span></div>
+        <div>Range<span>${def.attackRange === 'short' ? 'melee' : 'ranged'}</span></div>
       `;
       card.appendChild(stats);
 
@@ -562,7 +562,7 @@ export class UIManager {
 
       const buy = document.createElement('button');
       buy.className = 'si-buy';
-      buy.textContent = item.sold ? 'Продано' : `${item.price} золота`;
+      buy.textContent = item.sold ? 'Sold' : `${item.price} gold`;
       buy.disabled = item.sold || !player.canAfford(item.price);
       buy.addEventListener('click', () => {
         this.intents.buy(item);
@@ -592,8 +592,8 @@ export class UIManager {
   openHealing(healed, bonusId, player) {
     const bonus = getUpgrade(bonusId);
     this.el.healingText.innerHTML =
-      `Восстановлено <b>${fmtInt(healed)}</b> HP (30% от максимума).<br>` +
-      `Дар алтаря: <b>${bonus.name}</b> — ${bonus.desc}`;
+      `Restored <b>${fmtInt(healed)}</b> HP (30% of maximum).<br>` +
+      `Altar gift: <b>${bonus.name}</b> — ${bonus.desc}`;
     void player;
   }
 
@@ -624,7 +624,7 @@ export class UIManager {
 
       const take = document.createElement('button');
       take.className = 'si-buy';
-      take.textContent = 'Забрать';
+      take.textContent = 'Take';
       take.addEventListener('click', () => this.intents.pickReward(choice));
       card.appendChild(take);
 
@@ -644,15 +644,15 @@ export class UIManager {
     const minutes = Math.floor(run.elapsed / 60);
     const seconds = Math.floor(run.elapsed % 60);
     const rows = [
-      ['Класс', getClass(player.classId).name],
-      ['Оружие', player.weapon.name],
-      ['Этаж', String(run.floorIndex + 1)],
-      ['Убийств', fmtInt(s.kills)],
-      ['Нанесено урона', fmtInt(s.damageDealt)],
-      ['Получено урона', fmtInt(s.damageTaken)],
-      ['Собрано золота', fmtInt(s.goldEarned)],
-      ['Комнат пройдено', fmtInt(s.roomsCleared)],
-      ['Время', `${minutes}:${String(seconds).padStart(2, '0')}`],
+      ['Class', getClass(player.classId).name],
+      ['Weapon', player.weapon.name],
+      ['Floor', String(run.floorIndex + 1)],
+      ['Kills', fmtInt(s.kills)],
+      ['Damage dealt', fmtInt(s.damageDealt)],
+      ['Damage taken', fmtInt(s.damageTaken)],
+      ['Gold earned', fmtInt(s.goldEarned)],
+      ['Rooms cleared', fmtInt(s.roomsCleared)],
+      ['Time', `${minutes}:${String(seconds).padStart(2, '0')}`],
     ];
     target.innerHTML = rows
       .map(([label, value]) => `<div class="st-label">${label}</div><div class="st-value">${value}</div>`)

@@ -88,7 +88,7 @@ const ui = new UIManager({
     game.nextFloor();
     state.transition('playing');
     ui.showScreen('playing');
-    ui.showTransition(`ЭТАЖ ${game.run.floorIndex + 1}`);
+    ui.showTransition(`FLOOR ${game.run.floorIndex + 1}`);
     transitionTimer = CONFIG.ui.floorTransitionDuration;
   },
   resume: () => resumeFromPause(),
@@ -147,7 +147,7 @@ const game = new Game({
         if (runtime.reward.length > 0) {
           openReward(runtime.reward);
         } else {
-          showNotice('Комната зачищена — иди к двери');
+          showNotice('Room cleared — head for the door');
         }
       } else if (runtime.type === 'boss') {
         handleBossDefeated(runtime);
@@ -188,7 +188,7 @@ function startRun() {
   game.startRun(classId, ultId);
   state.force('playing');
   ui.showScreen('playing');
-  ui.showTransition(`${game.getClassName()} — в подземелье`);
+  ui.showTransition(`${game.getClassName()} — into the dungeon`);
   transitionTimer = 1.3;
   render.resize();
 }
@@ -276,8 +276,8 @@ function finishVictory() {
   ui.renderStats(ui.el.statsVictory, player, game.run);
   ui.setVictorySubtitle(
     final
-      ? `${bossName} повержен — забег пройден`
-      : `${bossName} повержен — этаж ${game.run.floorIndex + 1} пройден`,
+      ? `${bossName} defeated — the run is complete`
+      : `${bossName} defeated — floor ${game.run.floorIndex + 1} cleared`,
   );
   // Beyond the last floor there is nothing to advance to (§12-14 rotation).
   ui.setNextFloorVisible(!final);
@@ -420,7 +420,7 @@ function handleInteraction(result) {
     }
 
     case 'travel': {
-      showNotice(`Переход: ${roomTypeLabel(result.payload?.targetType)}`);
+      showNotice(`Travel: ${roomTypeLabel(result.payload?.targetType)}`);
       break;
     }
 
@@ -475,7 +475,7 @@ function autoTravelIfAtDoor() {
 
   doorArmed = false;
   game.travelTo(targetId);
-  showNotice(`Переход: ${roomTypeLabel(entered.targetType)}`);
+  showNotice(`Travel: ${roomTypeLabel(entered.targetType)}`);
 }
 
 /**
@@ -552,15 +552,15 @@ function updateContextHint() {
   if (noticeTimer > 0 || activeOverlay) return;
 
   const interaction = game.getInteraction();
-  if (interaction?.kind === 'healing') ui.setHint('[E] Восстановить силы');
-  else if (interaction?.kind === 'shop') ui.setHint('[E] Открыть лавку');
+  if (interaction?.kind === 'healing') ui.setHint('[E] Restore health');
+  else if (interaction?.kind === 'shop') ui.setHint('[E] Open the shop');
   else if (interaction?.kind === 'door') {
     // Name the destination: the door colour already encodes it, and the hint
     // is what turns that colour into a word.
-    ui.setHint(`Дверь ведёт: ${roomTypeLabel(interaction.door?.targetType)}`);
+    ui.setHint(`Door leads to: ${roomTypeLabel(interaction.door?.targetType)}`);
   } else {
     const player = game.getPlayer();
-    if (player && player.ultReady) ui.setHint('[Q] УЛЬТА ГОТОВА');
+    if (player && player.ultReady) ui.setHint('[Q] ULTIMATE READY');
     else ui.setHint('');
   }
 }
@@ -582,10 +582,10 @@ window.addEventListener('resize', handleResize);
 
 // --- Global error surface ---------------------------------------------
 window.addEventListener('error', (event) => {
-  ui.showError(`Ошибка: ${event.message}\n${event.filename}:${event.lineno}`);
+  ui.showError(`Error: ${event.message}\n${event.filename}:${event.lineno}`);
 });
 window.addEventListener('unhandledrejection', (event) => {
-  ui.showError(`Необработанный отказ: ${String(event.reason)}`);
+  ui.showError(`Unhandled rejection: ${String(event.reason)}`);
 });
 
 // --- Boot --------------------------------------------------------------

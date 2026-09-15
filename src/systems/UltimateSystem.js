@@ -179,7 +179,7 @@ export class UltimateSystem {
     if (!first) {
       // Nothing to hit: refund half the charge so the ult is not wasted.
       player.addUltCharge(50);
-      this.bus.emit(EVENTS.NOTICE, { text: 'Нет цели для Chain Lightning' });
+      this.bus.emit(EVENTS.NOTICE, { text: 'No target for Chain Lightning' });
       return;
     }
 

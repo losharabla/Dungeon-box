@@ -22,7 +22,7 @@ export const UPGRADES = {
   damage_10: {
     id: 'damage_10',
     name: '+10% Damage',
-    desc: 'Весь наносимый урон увеличен на 10%.',
+    desc: 'All damage dealt is increased by 10%.',
     price: 80,
     source: 'both',
     rarity: 'common',
@@ -32,7 +32,7 @@ export const UPGRADES = {
   max_hp_20: {
     id: 'max_hp_20',
     name: '+20 Max HP',
-    desc: 'Максимальный запас здоровья увеличен на 20.',
+    desc: 'Maximum health increased by 20.',
     price: 70,
     source: 'both',
     rarity: 'common',
@@ -42,7 +42,7 @@ export const UPGRADES = {
   speed_15: {
     id: 'speed_15',
     name: '+15% Movement Speed',
-    desc: 'Скорость передвижения увеличена на 15%.',
+    desc: 'Movement speed increased by 15%.',
     price: 80,
     source: 'both',
     rarity: 'common',
@@ -52,7 +52,7 @@ export const UPGRADES = {
   crit_10: {
     id: 'crit_10',
     name: '+10% Critical Chance',
-    desc: 'Шанс критического удара увеличен на 10%.',
+    desc: 'Critical hit chance increased by 10%.',
     price: 90,
     source: 'both',
     rarity: 'common',
@@ -62,7 +62,7 @@ export const UPGRADES = {
   attack_speed_20: {
     id: 'attack_speed_20',
     name: '+20% Attack Speed',
-    desc: 'Скорость атаки увеличена на 20%.',
+    desc: 'Attack speed increased by 20%.',
     price: 95,
     source: 'both',
     rarity: 'common',
@@ -73,7 +73,7 @@ export const UPGRADES = {
   heal_max_hp_10: {
     id: 'heal_max_hp_10',
     name: '+10% Max HP',
-    desc: 'Максимальный запас здоровья увеличен на 10%.',
+    desc: 'Maximum health increased by 10%.',
     price: 0,
     source: 'reward',
     rarity: 'common',
@@ -87,7 +87,7 @@ export const UPGRADES = {
   heal_damage_10: {
     id: 'heal_damage_10',
     name: '+10% Damage',
-    desc: 'Весь наносимый урон увеличен на 10%.',
+    desc: 'All damage dealt is increased by 10%.',
     price: 0,
     source: 'reward',
     rarity: 'common',
@@ -97,7 +97,7 @@ export const UPGRADES = {
   heal_speed_10: {
     id: 'heal_speed_10',
     name: '+10% Movement Speed',
-    desc: 'Скорость передвижения увеличена на 10%.',
+    desc: 'Movement speed increased by 10%.',
     price: 0,
     source: 'reward',
     rarity: 'common',
@@ -109,7 +109,7 @@ export const UPGRADES = {
   life_steal: {
     id: 'life_steal',
     name: 'Vampiric Edge',
-    desc: '5% нанесённого урона возвращается как здоровье.',
+    desc: '5% of the damage you deal is returned as health.',
     price: 140,
     source: 'both',
     rarity: 'rare',
@@ -119,7 +119,7 @@ export const UPGRADES = {
   armor_3: {
     id: 'armor_3',
     name: 'Iron Hide',
-    desc: 'Каждый входящий удар ослаблен на 3 единицы.',
+    desc: 'Every incoming hit is reduced by 3.',
     price: 130,
     source: 'both',
     rarity: 'rare',
@@ -129,7 +129,7 @@ export const UPGRADES = {
   damage_25: {
     id: 'damage_25',
     name: '+25% Damage',
-    desc: 'Весь наносимый урон увеличен на 25%.',
+    desc: 'All damage dealt is increased by 25%.',
     price: 170,
     source: 'both',
     rarity: 'rare',
@@ -139,7 +139,7 @@ export const UPGRADES = {
   attack_speed_35: {
     id: 'attack_speed_35',
     name: '+35% Attack Speed',
-    desc: 'Скорость атаки увеличена на 35%.',
+    desc: 'Attack speed increased by 35%.',
     price: 175,
     source: 'both',
     rarity: 'rare',

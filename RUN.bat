@@ -4,10 +4,10 @@ rem  Double-click launcher for the game.
 rem  The server runs in THIS window, so closing the window stops it.
 rem
 rem  This file is deliberately pure ASCII. A .bat containing non-ASCII
-rem  bytes is mis-parsed by cmd.exe the moment chcp changes the code page
-rem  (byte offsets and character counts stop agreeing, and Russian lines
-rem  get executed as commands). All Russian text therefore lives in
-rem  tools/serve.mjs, which prints UTF-8 after chcp 65001 below.
+rem  bytes is mis-parsed by cmd.exe the moment chcp changes the code page:
+rem  byte offsets and character counts stop agreeing, and the tail of a
+rem  line gets executed as a command. The server's own output is UTF-8, so
+rem  chcp 65001 below puts the console in a code page that can print it.
 rem ---------------------------------------------------------------
 chcp 65001 >nul
 title Roguelike - server

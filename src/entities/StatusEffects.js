@@ -20,22 +20,22 @@ import { clamp } from '../core/MathUtils.js';
 
 /** @type {Record<string, StatusDef>} */
 export const EFFECT_DEFS = {
-  burn: { id: 'burn', label: 'Горение', harmful: true },
-  slow: { id: 'slow', label: 'Замедление', harmful: true },
-  stun: { id: 'stun', label: 'Оглушение', harmful: true },
-  invulnerable: { id: 'invulnerable', label: 'Неуязвимость' },
+  burn: { id: 'burn', label: 'Burning', harmful: true },
+  slow: { id: 'slow', label: 'Slowed', harmful: true },
+  stun: { id: 'stun', label: 'Stunned', harmful: true },
+  invulnerable: { id: 'invulnerable', label: 'Invulnerable' },
   /**
    * The short mercy window after the player is hit (CONFIG.combat
    * .playerHurtIframe). Kept apart from `invulnerable` so the ability's ward
    * bubble stays its own visual instead of flickering on every hit, while
    * both still count as "incoming damage is ignored".
    */
-  hurtIframe: { id: 'hurtIframe', label: 'Передышка' },
-  hasted: { id: 'hasted', label: 'Ускорение' },
-  timestop: { id: 'timestop', label: 'Стоп времени', harmful: true },
-  ricochet: { id: 'ricochet', label: 'Рикошет' },
-  bulletstorm: { id: 'bulletstorm', label: 'Шквал пуль' },
-  damagebuff: { id: 'damagebuff', label: 'Ярость' },
+  hurtIframe: { id: 'hurtIframe', label: 'Recovery' },
+  hasted: { id: 'hasted', label: 'Hasted' },
+  timestop: { id: 'timestop', label: 'Time Stop', harmful: true },
+  ricochet: { id: 'ricochet', label: 'Ricochet' },
+  bulletstorm: { id: 'bulletstorm', label: 'Bullet Storm' },
+  damagebuff: { id: 'damagebuff', label: 'Rage' },
 };
 
 /**

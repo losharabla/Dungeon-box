@@ -53,9 +53,9 @@ export class Spawner {
   buildWaves(tier) {
     const base = tier === 2 ? 4 : 3;
     return [
-      { label: 'Волна 1', count: base, elite: false, delay: 0.8 },
-      { label: 'Волна 2', count: base + 2, elite: false, delay: 1.3 },
-      { label: 'Элитная волна', count: Math.max(2, Math.round(base * 0.75)), elite: true, delay: 1.3 },
+      { label: 'Wave 1', count: base, elite: false, delay: 0.8 },
+      { label: 'Wave 2', count: base + 2, elite: false, delay: 1.3 },
+      { label: 'Elite Wave', count: Math.max(2, Math.round(base * 0.75)), elite: true, delay: 1.3 },
     ];
   }
 

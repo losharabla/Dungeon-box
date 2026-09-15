@@ -490,12 +490,12 @@ await check('the floor panel reveals no rooms, only progress', async () => {
   ui.updateHud(game.getPlayer(), game.run, game.rooms);
 
   const html = ui.el.rooms.innerHTML;
-  assert.match(html, /ЭТАЖ/, 'the panel must name the floor');
-  assert.match(html, /КОМНАТА/, 'the panel must show progress along the path');
+  assert.match(html, /FLOOR/, 'the panel must name the floor');
+  assert.match(html, /ROOM/, 'the panel must show progress along the path');
 
   // No room may be described anywhere in the panel: no list, no names, no
   // per-room markers.
-  for (const label of ['БОЙ', 'ЛАВКА', 'ЛЕЧЕНИЕ', 'БОСС', 'arena', 'shop', 'healing', 'boss']) {
+  for (const label of ['FIGHT', 'SHOP', 'HEAL', 'BOSS', 'arena', 'shop', 'healing', 'boss']) {
     assert.ok(
       !html.includes(label),
       `the floor panel must not name rooms (found "${label}")`,
@@ -504,13 +504,13 @@ await check('the floor panel reveals no rooms, only progress', async () => {
   assert.ok(!/class="[^"]*\bnode\b/.test(html), 'the panel must not draw per-room nodes');
 
   // It tracks progress instead, and updates as the player advances.
-  assert.match(html, /КОМНАТА 1 \/ \d+/, 'the entrance is room 1');
+  assert.match(html, /ROOM 1 \/ \d+/, 'the entrance is room 1');
   const before = html;
   game.rooms.runtime.cleared = true;
   game.run.markCleared();
   game.travelTo(game.run.currentNode().next[0]);
   ui.updateHud(game.getPlayer(), game.run, game.rooms);
-  assert.match(ui.el.rooms.innerHTML, /КОМНАТА 2 \/ \d+/, 'the counter must advance');
+  assert.match(ui.el.rooms.innerHTML, /ROOM 2 \/ \d+/, 'the counter must advance');
   assert.notEqual(ui.el.rooms.innerHTML, before, 'the panel must refresh on a new room');
 });
 
@@ -557,7 +557,7 @@ await check('the renderer and the simulation share one camera instance', async (
 
 await check('a boss victory advances to the next floor through the real UI', async () => {
   // Regression guard: the middle bosses cleared but never opened the victory
-  // screen, so "Следующий этаж" was unreachable and the run dead-ended after
+  // screen, so "Next Floor" was unreachable and the run dead-ended after
   // the first boss. The campaign test called game.nextFloor() directly and
   // could not see the broken flow, so this walks the exact click path.
   const handle = /** @type {any} */ (globalThis.window).__roguelike;

@@ -36,12 +36,12 @@ export const ROOM_TYPE_ELITE_COLORS = {
 
 /** Short uppercase label per room type, shown on the door plate. */
 export const ROOM_TYPE_LABELS = {
-  start: 'ВХОД',
-  arena: 'БОЙ',
-  shop: 'ЛАВКА',
-  healing: 'ЛЕЧЕНИЕ',
-  boss: 'БОСС',
-  default: 'КОМНАТА',
+  start: 'START',
+  arena: 'FIGHT',
+  shop: 'SHOP',
+  healing: 'HEAL',
+  boss: 'BOSS',
+  default: 'ROOM',
 };
 
 /**

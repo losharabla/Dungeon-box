@@ -37,20 +37,20 @@ export const ULTIMATES = {
     // spin now accelerates him into the enemies it is hitting.
     moveScale: 1.35,
     color: '#ffb347',
-    desc: 'Вращение с уроном всем врагам вокруг. Разгоняет воина.',
+    desc: 'A spinning attack that damages every enemy around you. Speeds the warrior up.',
   },
 
   invulnerability: {
     id: 'invulnerability', classId: 'warrior', name: 'Invulnerability',
     kind: 'invulnerability', duration: 3.0, color: '#ffe9a8',
-    desc: 'Полная неуязвимость на 3 секунды.',
+    desc: 'Total invulnerability for 3 seconds.',
   },
 
   berserker_strike: {
     id: 'berserker_strike', classId: 'warrior', name: 'Berserker Strike',
     kind: 'berserker_strike', duration: 0.45, radius: 150, damageMul: 3.4,
     color: '#ff4b2b',
-    desc: 'Сокрушительный удар по области перед собой с огромным knockback.',
+    desc: 'A crushing blow to the area in front of you with huge knockback.',
   },
 
   /* ---------------- Mage (§7) ---------------- */
@@ -59,20 +59,20 @@ export const ULTIMATES = {
     id: 'meteor', classId: 'mage', name: 'Meteor',
     kind: 'meteor', duration: 0, radius: 165, damageMul: 4.2, delay: 1.1,
     color: '#ff6a1a',
-    desc: 'Через задержку в выбранную область падает метеор.',
+    desc: 'After a short delay, a meteor falls on the targeted area.',
   },
 
   chain_lightning: {
     id: 'chain_lightning', classId: 'mage', name: 'Chain Lightning',
     kind: 'chain_lightning', duration: 0.5, maxTargets: 5, damageMul: 1.8,
     color: '#8fe3ff',
-    desc: 'Молния бьёт до 5 целей, урон падает с каждым прыжком.',
+    desc: 'Lightning strikes up to 5 targets, with damage falling off at every jump.',
   },
 
   time_stop: {
     id: 'time_stop', classId: 'mage', name: 'Time Stop',
     kind: 'time_stop', duration: 3.5, color: '#7fd8ff',
-    desc: 'Все враги замирают. Игрок продолжает двигаться и стрелять.',
+    desc: 'Every enemy freezes. The player keeps moving and shooting.',
   },
 
   /* ---------------- Gunner (§8) ---------------- */
@@ -80,20 +80,20 @@ export const ULTIMATES = {
   bullet_storm: {
     id: 'bullet_storm', classId: 'gunner', name: 'Bullet Storm',
     kind: 'bullet_storm', duration: 2.4, color: '#ffbe4d',
-    desc: 'Непрерывный шквал пуль веером вокруг игрока.',
+    desc: 'A continuous storm of bullets fanned out around the player.',
   },
 
   ricochet: {
     id: 'ricochet', classId: 'gunner', name: 'Ricochet',
     kind: 'ricochet', duration: 6.0, color: '#9fd8ff',
-    desc: 'Пули рикошетят от стен в течение 6 секунд.',
+    desc: 'Bullets ricochet off walls for 6 seconds.',
   },
 
   combat_stim: {
     id: 'combat_stim', classId: 'gunner', name: 'Combat Stim',
     kind: 'combat_stim', duration: 7.0, heal: 40, speedBonus: 0.45,
     color: '#6ffbb0',
-    desc: 'Восстанавливает HP и временно ускоряет движение.',
+    desc: 'Restores HP and temporarily speeds up movement.',
   },
 };
 

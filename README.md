@@ -29,13 +29,13 @@ headless Chrome over the DevTools protocol and plays the game with actual key an
 events; the only game state it sets for itself is skipping through doors and handing the
 merchant a customer with gold to spend. Nothing is mocked, and the HUD is the real DOM.*
 
-The implementation follows the design document (`диздок.txt`) in this folder.
+The implementation follows the design document (`DESIGN.md`) in this folder.
 
 ---
 
 ## Running the game
 
-**Double-click `ЗАПУСТИТЬ.bat`.** It opens a console, starts the local server and opens the
+**Double-click `RUN.bat`.** It opens a console, starts the local server and opens the
 game in the browser. Closing that console window stops the server. Node.js must be installed
 ([nodejs.org](https://nodejs.org/)); the launcher says so instead of vanishing if it is missing.
 
@@ -163,8 +163,8 @@ imports a global `game` object; every system receives what it needs through its 
 ├── style.css           All UI styling
 ├── jsconfig.json       Optional: enables JSDoc-based type checking in an editor
 ├── package.json        Scripts only — the game itself has zero dependencies
-├── диздок.txt          The Russian design document this implements
-├── ЗАПУСТИТЬ.bat       Double-click launcher: server + browser, stops with the window
+├── DESIGN.md           The design document this implements
+├── RUN.bat             Double-click launcher: server + browser, stops with the window
 ├── LICENSE             MIT
 │
 ├── src/
@@ -439,7 +439,7 @@ is the audio equivalent of unbounded particles:
   voice ceiling when the frame rate sags, and the context is suspended while the tab is
   hidden.
 
-**Controls.** `Звук` in the main menu (or the pause screen) opens the mixer: master, music
+**Controls.** `Sound` in the main menu (or the pause screen) opens the mixer: master, music
 and effects levels plus a mute toggle. The markup is generated once and written into both
 panels, so the two can never drift apart. Settings persist in `localStorage` and are
 sanitised field-by-field on load — one corrupt entry cannot silence a channel.
@@ -687,17 +687,17 @@ Each of these is now covered by a named regression test:
     (was 28 px/s) and a warrior reaches melee range in under 2s. Guarded by a data invariant
     *and* by measuring the skeleton's real retreat speed, because the data can claim a
     multiplier the AI never applies.
-17. **The advertised dash did nothing.** The help screen listed "Пробел — рывок" from the
+17. **The advertised dash did nothing.** The help screen listed "Space — dash" from the
     first build, but nothing was ever bound to `Space`: the key was swallowed by
     `InputService` (to stop the page scrolling) and then ignored. Fixed by implementing the
     ability rather than deleting the line — see the additions below. The readiness bar only
     appeared afterwards, because an ability with a cooldown and no feedback is unusable.
-18. **The run dead-ended after the first boss.** Beating a middle boss printed "дверь
-    открыта", but a boss node has no doors to the next floor (§19 ends at the boss), and the
+18. **The run dead-ended after the first boss.** Beating a middle boss printed "door
+    open", but a boss node has no doors to the next floor (§19 ends at the boss), and the
     victory screen — the only way forward — was shown for the final boss alone. The fix
     shows the victory screen after *every* boss: the reward overlay closes first (it lives
     inside the playing screen, so opening victory early would hide it), then the screen
-    offers "Следующий этаж". The button is hidden on the last floor, and the campaign length
+    offers "Next Floor". The button is hidden on the last floor, and the campaign length
     moved to `CONFIG.run.floors` (the boss order §12-14 defines exactly how long a run is).
     The campaign simulation could not catch this because it called `game.nextFloor()`
     directly, bypassing the UI — the flow is now driven by the real button click in
@@ -813,13 +813,13 @@ weapons), not more damage.
   as specified.
 * **A straight path of choices, not a floor you can see** (§19) — the route to the boss is
   a fixed number of rooms, and every room offers **2–3 doors**, each leading to a *different*
-  next room: a normal arena, a harder (violet `БОЙ+`) arena, a shop or a healing altar.
+  next room: a normal arena, a harder (violet `FIGHT+`) arena, a shop or a healing altar.
   Entering one door **destroys the others**: the rooms behind them are dropped from the floor
   and are never built, so nothing can be skipped and there is no way back. A floor's room
   count is unchanged — the choice changes *which* rooms you walk, never how many steps.
 * **Nothing is generated ahead of the player.** The floor rolls only its *shape* (how many
   steps, and what kind of step each is). The next step's rooms exist as offers for exactly
-  one decision; the HUD therefore shows progress (`ЭТАЖ 2 · КОМНАТА 3 / 9`) and no room
+  one decision; the HUD therefore shows progress (`FLOOR 2 · ROOM 3 / 9`) and no room
   list, because there is no map to show and the rooms you declined no longer exist.
 * **The last door is a choice too: boss or elite boss.** The room before the boss offers the
   normal encounter and the same boss entered with an elite guard. The hard variant rolls its
@@ -827,7 +827,7 @@ weapons), not more damage.
   what makes the louder door worth taking rather than a trap.
 * **Doors are colour-coded, and named.** One palette (`src/data/roomTypes.js`) maps a room
   type to a colour and a short label; the door, its plate and the exit chevron all use it:
-  blue = бой, violet = бой+, gold = лавка, green = лечение, red = босс, deep red = босс+.
+  blue = fight, violet = fight+, gold = shop, green = heal, red = boss, deep red = boss+.
   Walking into a doorway takes the door the player actually entered, not "the next room".
 * **Rock-paper-scissors balance was avoided** — later floors scale enemy HP and damage
   modestly (about 1.32×/1.20× per floor) rather than demanding a specific build, so any

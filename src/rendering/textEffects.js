@@ -134,7 +134,7 @@ export class FloatingTextSystem {
   }
 
   /**
-   * Show a status word ("МИМО", "БЛОК"), refreshing an identical label that is
+   * Show a status word ("MISS", "BLOCK"), refreshing an identical label that is
    * already on screen instead of stacking another copy.
    *
    * A blocked event can arrive many times in one frame — every hazard the

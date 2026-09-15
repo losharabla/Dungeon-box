@@ -15,7 +15,7 @@ assert.equal(writes,1);
 player.ultCharge=100;
 ui.updateHud(player,run,rooms);
 assert.equal(writes,2);
-assert.match(ui.el.ultName.value,/ГОТОВО/);
+assert.match(ui.el.ultName.value,/READY/);
 ui.updateHud(player,run,rooms);
 assert.equal(writes,2);
 console.log('2/2 real HUD cache checks passed');

@@ -7,7 +7,7 @@
  *
  * Design (design doc §19, adapted after play-testing):
  *
- *   start -> [ 2-3 варианта ] -> [ 2-3 варианта ] -> ... -> boss
+ *   start -> [ 2-3 choices ] -> [ 2-3 choices ] -> ... -> boss
  *
  * The route to the boss is a fixed number of rooms — the player never skips
  * a step, because a door leads to the *next* room on a straight path. What

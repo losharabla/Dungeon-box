@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,21 +16,21 @@
       <h1 class="title">ROGUE<span>LIKE</span></h1>
       <p class="subtitle">dark fantasy prototype</p>
       <div class="menu-buttons">
-        <button class="btn btn-primary" data-action="goto" data-target="character_select">Начать забег</button>
-        <button class="btn" data-action="show-help">Управление</button>
-        <button class="btn" data-action="toggle-settings" data-target="settings-menu">Звук</button>
+        <button class="btn btn-primary" data-action="goto" data-target="character_select">Start Run</button>
+        <button class="btn" data-action="show-help">Controls</button>
+        <button class="btn" data-action="toggle-settings" data-target="settings-menu">Sound</button>
       </div>
       <!-- Mixer controls are built by UIManager, so the menu and the pause
            screen can never drift apart. -->
       <div class="settings-block" id="settings-menu" hidden></div>
       <div class="help-block" hidden>
-        <p><b>W A S D</b> — движение</p>
-        <p><b>Мышь</b> — прицел</p>
-        <p><b>ЛКМ</b> — атака</p>
-        <p><b>Q</b> — ульта</p>
-        <p><b>E</b> — взаимодействие (двери, магазин, алтарь)</p>
-        <p><b>ESC</b> — пауза</p>
-        <p><b>Пробел</b> — рывок</p>
+        <p><b>W A S D</b> — move</p>
+        <p><b>Mouse</b> — aim</p>
+        <p><b>Left click</b> — attack</p>
+        <p><b>Q</b> — ultimate</p>
+        <p><b>E</b> — interact (doors, shop, altar)</p>
+        <p><b>ESC</b> — pause</p>
+        <p><b>Space</b> — dash</p>
       </div>
     </div>
   </section>
@@ -38,18 +38,18 @@
   <!-- ============ CHARACTER SELECT ============ -->
   <section class="screen" data-screen="character_select" hidden>
     <div class="panel panel-wide">
-      <h2 class="screen-title">Выбор класса</h2>
+      <h2 class="screen-title">Choose Your Class</h2>
 
       <div class="class-grid" id="class-grid"></div>
 
       <div class="ult-select">
-        <h3>Ультимейт</h3>
+        <h3>Ultimate</h3>
         <div class="ult-list" id="ult-list"></div>
       </div>
 
       <div class="menu-buttons">
-        <button class="btn btn-primary" data-action="start-run">В подземелье</button>
-        <button class="btn" data-action="goto" data-target="menu">Назад</button>
+        <button class="btn btn-primary" data-action="start-run">Into the Dungeon</button>
+        <button class="btn" data-action="goto" data-target="menu">Back</button>
       </div>
     </div>
   </section>
@@ -78,19 +78,19 @@
 
       <div class="hud-bottom">
         <div class="hud-weapon">
-          <div class="hud-label">Оружие</div>
+          <div class="hud-label">Weapon</div>
           <div class="hud-weapon-name" id="hud-weapon-name">—</div>
         </div>
         <div class="hud-dash">
           <div class="hud-ult-head">
-            <span class="hud-label" id="hud-dash-name">Рывок</span>
+            <span class="hud-label" id="hud-dash-name">Dash</span>
             <span class="key" id="hud-dash-key">Space</span>
           </div>
           <div class="bar bar-dash"><div class="bar-fill" id="hud-dash-fill"></div></div>
         </div>
         <div class="hud-ult">
           <div class="hud-ult-head">
-            <span class="hud-label" id="hud-ult-name">Ульта</span>
+            <span class="hud-label" id="hud-ult-name">Ultimate</span>
             <span class="key" id="hud-ult-key">Q</span>
           </div>
           <div class="bar bar-ult"><div class="bar-fill" id="hud-ult-fill"></div></div>
@@ -106,11 +106,11 @@
     <!-- Shop -->
     <div class="overlay" id="overlay-shop" hidden>
       <div class="panel panel-wide">
-        <h2 class="screen-title">Лавка торговца</h2>
-        <p class="subtitle">Золото: <b id="shop-gold">0</b></p>
+        <h2 class="screen-title">Merchant's Shop</h2>
+        <p class="subtitle">Gold: <b id="shop-gold">0</b></p>
         <div class="shop-grid" id="shop-grid"></div>
         <div class="menu-buttons">
-          <button class="btn btn-primary" data-action="shop-leave">Покинуть лавку</button>
+          <button class="btn btn-primary" data-action="shop-leave">Leave the Shop</button>
         </div>
       </div>
     </div>
@@ -118,10 +118,10 @@
     <!-- Healing -->
     <div class="overlay" id="overlay-healing" hidden>
       <div class="panel">
-        <h2 class="screen-title">Алтарь восстановления</h2>
-        <p class="subtitle" id="healing-text">Вы восстанавливаете силы.</p>
+        <h2 class="screen-title">Altar of Restoration</h2>
+        <p class="subtitle" id="healing-text">You restore your strength.</p>
         <div class="menu-buttons">
-          <button class="btn btn-primary" data-action="healing-leave">Продолжить</button>
+          <button class="btn btn-primary" data-action="healing-leave">Continue</button>
         </div>
       </div>
     </div>
@@ -129,10 +129,10 @@
     <!-- Reward -->
     <div class="overlay" id="overlay-reward" hidden>
       <div class="panel">
-        <h2 class="screen-title">Награда</h2>
+        <h2 class="screen-title">Reward</h2>
         <div class="reward-grid" id="reward-grid"></div>
         <div class="menu-buttons">
-          <button class="btn btn-primary" data-action="reward-take">Забрать</button>
+          <button class="btn btn-primary" data-action="reward-take">Take</button>
         </div>
       </div>
     </div>
@@ -140,11 +140,11 @@
     <!-- Pause -->
     <div class="overlay" id="overlay-pause" hidden>
       <div class="panel">
-        <h2 class="screen-title">Пауза</h2>
+        <h2 class="screen-title">Paused</h2>
         <div class="settings-block" id="settings-pause"></div>
         <div class="menu-buttons">
-          <button class="btn btn-primary" data-action="resume">Продолжить</button>
-          <button class="btn" data-action="abandon-run">Покинуть забег</button>
+          <button class="btn btn-primary" data-action="resume">Continue</button>
+          <button class="btn" data-action="abandon-run">Abandon Run</button>
         </div>
       </div>
     </div>
@@ -158,12 +158,12 @@
   <!-- ============ GAME OVER ============ -->
   <section class="screen" data-screen="game_over" hidden>
     <div class="panel">
-      <h1 class="title title-dead">ВЫ ПОГИБЛИ</h1>
-      <p class="subtitle">Забег окончен</p>
+      <h1 class="title title-dead">YOU DIED</h1>
+      <p class="subtitle">The run is over</p>
       <div class="stats" id="stats-gameover"></div>
       <div class="menu-buttons">
-        <button class="btn btn-primary" data-action="restart">Новый забег</button>
-        <button class="btn" data-action="goto" data-target="menu">В меню</button>
+        <button class="btn btn-primary" data-action="restart">New Run</button>
+        <button class="btn" data-action="goto" data-target="menu">Main Menu</button>
       </div>
     </div>
   </section>
@@ -171,13 +171,13 @@
   <!-- ============ VICTORY ============ -->
   <section class="screen" data-screen="victory" hidden>
     <div class="panel">
-      <h1 class="title title-win">ПОБЕДА</h1>
-      <p class="subtitle" id="victory-sub">Executioner повержен</p>
+      <h1 class="title title-win">VICTORY</h1>
+      <p class="subtitle" id="victory-sub">Executioner defeated</p>
       <div class="stats" id="stats-victory"></div>
       <div class="menu-buttons">
-        <button class="btn btn-primary" id="btn-next-floor" data-action="next-floor">Следующий этаж</button>
-        <button class="btn" data-action="restart">Новый забег</button>
-        <button class="btn" data-action="goto" data-target="menu">В меню</button>
+        <button class="btn btn-primary" id="btn-next-floor" data-action="next-floor">Next Floor</button>
+        <button class="btn" data-action="restart">New Run</button>
+        <button class="btn" data-action="goto" data-target="menu">Main Menu</button>
       </div>
     </div>
   </section>

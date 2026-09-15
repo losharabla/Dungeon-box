@@ -35,7 +35,7 @@ export function drawPlayer(ctx, player, time, moveAmount = 0) {
   const attackPose = swingPose(player).extension;
 
   // Post-hit mercy window (CONFIG.combat.playerHurtIframe). The window makes
-  // enemy blows land as "МИМО", so the silhouette blinks to say *why* nothing
+  // enemy blows land as "MISS", so the silhouette blinks to say *why* nothing
   // is connecting. The cosine ends on a peak, so the alpha is already back to
   // 1 on the frame the status expires and the sprite cannot pop.
   const mercy = player.status.timeLeft('hurtIframe');

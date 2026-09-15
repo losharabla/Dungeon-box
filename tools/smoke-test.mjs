@@ -975,7 +975,7 @@ await check('REGRESSION: a hazard burns for its real dps, not for one point a ti
   //   * the flat armour floor `Math.max(1, damage - armor)` turned a 0.175 HP
   //     per-frame slice into exactly 1 damage, and
   //   * every accepted tick opened the player's 0.4 s mercy window, so two
-  //     thirds of the burn was refused as "МИМО" and — far worse — the window
+  //     thirds of the burn was refused as "MISS" and — far worse — the window
   //     never closed, making the player *invulnerable to everything else*
   //     while standing in fire.
   const { EventBus } = await import('../src/core/EventBus.js');
@@ -1023,7 +1023,7 @@ await check('REGRESSION: a hazard burns for its real dps, not for one point a ti
   );
   assert.ok(lost > 5, `the burn must not be swallowed by the mercy window (${lost.toFixed(2)})`);
   assert.equal(
-    game.floatingText.texts.filter((t) => t.text === 'МИМО').length,
+    game.floatingText.texts.filter((t) => t.text === 'MISS').length,
     0,
     'a burn must not be reported as a blocked hit',
   );

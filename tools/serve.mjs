@@ -57,18 +57,18 @@ const CONTENT_TYPES = {
 };
 
 const USAGE = `
-Статический сервер игры.
+The game's static server.
 
-  node tools/serve.mjs [порт] [--open] [--host <адрес>]
+  node tools/serve.mjs [port] [--open] [--host <address>]
 
-  порт          первый порт для попытки (по умолчанию $PORT или 8080)
-  --open        открыть игру в браузере после запуска
-  --host <адрес> адрес привязки (по умолчанию 127.0.0.1 — только этот компьютер)
-                --host 0.0.0.0 разрешает доступ с других устройств в сети
-  --help        эта справка
+  port           first port to try (defaults to $PORT or 8080)
+  --open         open the game in a browser once it is up
+  --host <address> address to bind (default 127.0.0.1 - this machine only)
+                 --host 0.0.0.0 also serves other devices on the network
+  --help         this help
 
-Если порт зарезервирован Windows или уже занят, следующий кандидат
-пробуется автоматически (${FALLBACK_PORTS.join(', ')}, затем любой свободный).
+If a port is reserved by Windows or already in use, the next candidate is
+tried automatically (${FALLBACK_PORTS.join(', ')}, then any free port).
 `.trim();
 
 /**
@@ -279,20 +279,20 @@ for (const candidate of candidates) {
     const busy = lastError.code === 'EADDRINUSE';
 
     if ((reserved || busy) && candidate !== 0) {
-      const why = reserved ? 'зарезервирован Windows' : 'уже занят';
-      console.log(`  порт ${candidate} ${why} (${lastError.code}) — пробую следующий`);
+      const why = reserved ? 'is reserved by Windows' : 'is already in use';
+      console.log(`  port ${candidate} ${why} (${lastError.code}) - trying the next one`);
       continue;
     }
 
-    console.error(`  не удалось запуститься на порту ${candidate}: ${lastError.message}`);
+    console.error(`  could not start on port ${candidate}: ${lastError.message}`);
     break;
   }
 }
 
 if (!server) {
   console.error('');
-  console.error('Не удалось запустить сервер ни на одном порту.');
-  console.error(`  последняя ошибка: ${lastError?.code ?? 'unknown'} ${lastError?.message ?? ''}`);
+  console.error('Could not start the server on any port.');
+  console.error(`  last error: ${lastError?.code ?? 'unknown'} ${lastError?.message ?? ''}`);
   process.exit(1);
 }
 
@@ -304,19 +304,19 @@ const port = /** @type {import('node:net').AddressInfo} */ (server.address()).po
 const url = `http://localhost:${port}/`;
 
 console.log('');
-console.log('Локальный сервер игры запущен.');
+console.log('The game server is running.');
 console.log(`  ${url}`);
 if (opts.host === '0.0.0.0') {
-  console.log('  доступен и с других устройств в этой сети');
+  console.log('  also reachable from other devices on this network');
 }
 console.log('');
-console.log('Ctrl+C — остановить, или просто закройте это окно.');
+console.log('Ctrl+C to stop it, or just close this window.');
 
 if (opts.open) openBrowser(url);
 
 process.on('SIGINT', () => {
   console.log('');
-  console.log('Сервер остановлен.');
+  console.log('Server stopped.');
   server?.close();
   process.exit(0);
 });

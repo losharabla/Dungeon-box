@@ -46,7 +46,7 @@ export const BOSSES = {
   stone_golem: {
     id: 'stone_golem',
     name: 'STONE GOLEM',
-    title: 'Хранитель первого зала',
+    title: 'Warden of the First Hall',
     maxHp: 900,
     speed: 1.5,
     damage: 26,
@@ -63,7 +63,7 @@ export const BOSSES = {
     phase2SpeedMul: 1.55,
     phase2CooldownMul: 0.62,
     palette: '#6b6357',
-    desc: 'Огромный каменный колосс: удары, удар по земле, камни и призыв големов.',
+    desc: 'A huge stone colossus: melee blows, a ground slam, hurled rocks and summoned reinforcements.',
     attacks: [
       { id: 'slam', kind: 'slam', telegraph: 0.55, damage: 30, radius: 92, cooldown: 3.4 },
       { id: 'shockwave', kind: 'shockwave', telegraph: 0.85, damage: 24, radius: 190, cooldown: 6.5 },
@@ -78,7 +78,7 @@ export const BOSSES = {
   fire_lord: {
     id: 'fire_lord',
     name: 'FIRE LORD',
-    title: 'Владыка пылающих залов',
+    title: 'Lord of the Burning Halls',
     maxHp: 1050,
     speed: 1.9,
     damage: 22,
@@ -93,7 +93,7 @@ export const BOSSES = {
     phase2SpeedMul: 1.4,
     phase2CooldownMul: 0.55,
     palette: '#c8452f',
-    desc: 'Дальний AoE-босс. Арена превращается в море огня — двигайся постоянно.',
+    desc: 'A ranged AoE boss. The arena turns into a sea of fire - keep moving at all times.',
     attacks: [
       { id: 'fireball', kind: 'fireball', telegraph: 0.45, damage: 22, radius: 16, cooldown: 1.9, count: 3 },
       { id: 'rain', kind: 'fireRain', telegraph: 1.0, damage: 26, radius: 66, cooldown: 7.0, count: 7 },
@@ -106,7 +106,7 @@ export const BOSSES = {
   executioner: {
     id: 'executioner',
     name: 'EXECUTIONER',
-    title: 'Финальный палач',
+    title: 'The Final Executioner',
     maxHp: 1400,
     speed: 2.6,
     damage: 32,
@@ -122,7 +122,7 @@ export const BOSSES = {
     phase2SpeedMul: 1.5,
     phase2CooldownMul: 0.5,
     palette: '#3a2f45',
-    desc: 'Быстрый мобильный палач: рывки, серии ударов, круговая атака и телепорт.',
+    desc: 'A fast, mobile executioner: dashes, flurries of blows, a spinning attack and a teleport.',
     attacks: [
       { id: 'dash', kind: 'dash', telegraph: 0.5, damage: 34, radius: 54, cooldown: 3.4 },
       { id: 'combo', kind: 'combo', telegraph: 0.4, damage: 18, radius: 70, cooldown: 4.6, count: 3 },

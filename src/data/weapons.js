@@ -72,7 +72,7 @@ export const WEAPONS = {
     arc: 1.45,
     swingTime: 0.18,
     knockback: 130,
-    desc: 'Сбалансированный клинок. Средний урон, средняя скорость.',
+    desc: 'A balanced blade. Medium damage, medium speed.',
   },
 
   battle_axe: {
@@ -87,7 +87,7 @@ export const WEAPONS = {
     swingTime: 0.28,
     knockback: 220,
     explosionRadius: 42,
-    desc: 'Тяжёлый топор с широким замахом и небольшим AoE.',
+    desc: 'A heavy axe with a wide swing and a small AoE.',
   },
 
   war_hammer: {
@@ -102,7 +102,7 @@ export const WEAPONS = {
     swingTime: 0.34,
     knockback: 430,
     stunChance: 0.35,
-    desc: 'Очень высокий урон, сильный knockback и шанс оглушить.',
+    desc: 'Very high damage, heavy knockback and a chance to stun.',
   },
 
   /* ---------------- Mage — normal (§9.4-9.6) ---------------- */
@@ -119,7 +119,7 @@ export const WEAPONS = {
     burnChance: 0.75,
     burnDuration: 2.6,
     burnDamage: 6,
-    desc: 'Огненные снаряды, поджигающие цель.',
+    desc: 'Fire projectiles that set the target alight.',
     projectile: {
       speed: 520, life: 1.25, radius: 8, visual: 'fire',
       explosionRadius: 34, explosionChance: 0.15,
@@ -138,7 +138,7 @@ export const WEAPONS = {
     slowChance: 0.95,
     slowFactor: 0.45,
     slowDuration: 2.4,
-    desc: 'Меньше урона, но надёжно замедляет врагов.',
+    desc: 'Less damage, but it reliably slows enemies down.',
     projectile: { speed: 560, life: 1.2, radius: 7, visual: 'ice' },
   },
 
@@ -152,7 +152,7 @@ export const WEAPONS = {
     range: 680,
     knockback: 60,
     chainChance: 0.3,
-    desc: 'Быстрые снаряды с шансом дополнительной цепи молний.',
+    desc: 'Fast projectiles with a chance to chain lightning.',
     projectile: { speed: 760, life: 1.0, radius: 5, visual: 'lightning' },
   },
 
@@ -168,7 +168,7 @@ export const WEAPONS = {
     range: 780,
     critBonus: 0.08,
     knockback: 60,
-    desc: 'Высокая точность и скорость атаки, небольшой урон.',
+    desc: 'High accuracy and attack speed, low damage.',
     projectile: { speed: 1050, life: 0.85, radius: 4, visual: 'bullet', count: 1 },
   },
 
@@ -181,7 +181,7 @@ export const WEAPONS = {
     cooldown: 0.72,
     range: 330,
     knockback: 130,
-    desc: 'Семь дробинок. Опустошает вблизи, слабеет на дистанции.',
+    desc: 'Seven pellets. Devastating up close, weaker at range.',
     projectile: {
       speed: 880, life: 0.34, radius: 4, visual: 'pellet',
       count: 7, spread: 0.44, pierce: 0,
@@ -197,7 +197,7 @@ export const WEAPONS = {
     cooldown: 0.1,
     range: 820,
     knockback: 45,
-    desc: 'Очень высокая скорострельность, слабая одиночная пуля.',
+    desc: 'Very high rate of fire, weak single bullet.',
     projectile: { speed: 1250, life: 0.72, radius: 4, visual: 'bullet' },
   },
 
@@ -211,7 +211,7 @@ export const WEAPONS = {
     range: 1500,
     critBonus: 0.2,
     knockback: 240,
-    desc: 'Огромный урон, низкая скорострельность, пробивает врагов насквозь.',
+    desc: 'Huge damage, low rate of fire, and it pierces straight through enemies.',
     projectile: { speed: 2600, life: 1.3, radius: 5, visual: 'sniper', pierce: 6 },
   },
 
@@ -230,7 +230,7 @@ export const WEAPONS = {
     swingTime: 0.2,
     knockback: 300,
     healOnKill: 14,
-    desc: 'Убийство восстанавливает HP. Чем агрессивнее игра, тем больше жизни.',
+    desc: 'Kills restore HP. The more aggressive you play, the more you heal.',
   },
 
   staff_of_the_void: {
@@ -243,7 +243,7 @@ export const WEAPONS = {
     cooldown: 0.42,
     range: 900,
     knockback: 90,
-    desc: 'Снаряды проходят сквозь врагов и взрываются при попадании.',
+    desc: 'Projectiles pass through enemies and explode on impact.',
     projectile: {
       speed: 700, life: 1.6, radius: 11, visual: 'void',
       pierce: 99, explosionRadius: 74, explosionChance: 0.5,
@@ -262,7 +262,7 @@ export const WEAPONS = {
     knockback: 50,
     heatRamp: 0.55,
     heatMax: 2.6,
-    desc: 'Чем дольше непрерывный огонь, тем выше скорострельность.',
+    desc: 'The longer you keep firing, the faster it shoots.',
     projectile: { speed: 1180, life: 0.78, radius: 5, visual: 'hellfire', spread: 0.1 },
   },
 };

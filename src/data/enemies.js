@@ -67,7 +67,7 @@ export const ENEMIES = {
     goldMin: 3, goldMax: 7, xpValue: 1,
     attackCooldown: 0.9, attackRange: 26, attackType: 'melee',
     weight: 10,
-    desc: 'Медленно ползёт прямо к игроку. Мало HP, слабый удар.',
+    desc: 'Crawls slowly straight at the player. Low HP, weak blow.',
   },
 
   /* 2 — Goblin */
@@ -78,7 +78,7 @@ export const ENEMIES = {
     goldMin: 5, goldMax: 11, xpValue: 1,
     attackCooldown: 0.65, attackRange: 30, attackType: 'melee',
     weight: 10,
-    desc: 'Быстрый ближний боец с малым запасом HP.',
+    desc: 'A fast melee fighter with a small HP pool.',
   },
 
   /* 3 — Skeleton */
@@ -89,7 +89,7 @@ export const ENEMIES = {
     goldMin: 6, goldMax: 13, xpValue: 1,
     attackCooldown: 1.5, attackRange: 420, attackType: 'ranged',
     preferRange: 250, retreatSpeedMul: 0.55, weight: 9,
-    desc: 'Стреляет снарядами и старается держать дистанцию.',
+    desc: 'Fires projectiles and tries to keep its distance.',
   },
 
   /* 4 — Orc */
@@ -102,7 +102,7 @@ export const ENEMIES = {
     goldMin: 12, goldMax: 22, xpValue: 2,
     attackCooldown: 1.1, attackRange: 38, attackType: 'melee',
     weight: 7, elite: true,
-    desc: 'Медленный, живучий, очень больно бьёт вблизи.',
+    desc: 'Slow and tough, and it hurts badly up close.',
   },
 
   /* 5 — Bat */
@@ -115,7 +115,7 @@ export const ENEMIES = {
     goldMin: 4, goldMax: 9, xpValue: 1,
     attackCooldown: 0.55, attackRange: 26, attackType: 'melee',
     dashSpeed: 4.2, dashCooldown: 2.6, weight: 8,
-    desc: 'Очень быстрый, периодически делает рывок к игроку.',
+    desc: 'Very fast, and it periodically dashes at the player.',
   },
 
   /* 6 — Mage */
@@ -128,7 +128,7 @@ export const ENEMIES = {
     goldMin: 10, goldMax: 18, xpValue: 2,
     attackCooldown: 2.2, attackRange: 400, attackType: 'ranged',
     preferRange: 260, retreatSpeedMul: 0.6, weight: 6, elite: true,
-    desc: 'Дальний бой с AoE-взрывами, держит дистанцию.',
+    desc: 'Ranged, with AoE blasts, and it keeps its distance.',
   },
 
   /* 7 — Shieldbearer */
@@ -147,7 +147,7 @@ export const ENEMIES = {
     /** Half-angle of the blocked frontal arc, in radians. */
     blockArc: 0.85,
     weight: 6, elite: true,
-    desc: 'Блокирует удары спереди, уязвим в спину. Медленно разворачивается.',
+    desc: 'Blocks blows from the front and is vulnerable from behind. Turns slowly.',
   },
 
   /* 8 — Assassin */
@@ -158,7 +158,7 @@ export const ENEMIES = {
     goldMin: 14, goldMax: 24, xpValue: 2,
     attackCooldown: 0.7, attackRange: 32, attackType: 'melee',
     stealth: 0.12, weight: 5, elite: true,
-    desc: 'Исчезает, телепортируется рядом и быстро атакует.',
+    desc: 'Vanishes, blinks in beside you and strikes fast.',
   },
 
   /* 9 — Berserker */
@@ -170,7 +170,7 @@ export const ENEMIES = {
     attackCooldown: 0.85, attackRange: 36, attackType: 'melee',
     healthThreshold: 0.4, enrageSpeedMul: 1.6, enrageDamageMul: 1.5,
     weight: 7, elite: true,
-    desc: 'При низком HP становится быстрее и бьёт сильнее.',
+    desc: 'At low HP it moves faster and hits harder.',
   },
 
   /* 10 — Necromancer */
@@ -183,7 +183,7 @@ export const ENEMIES = {
     preferRange: 320,
     summon: { id: 'skeleton', count: 2, cooldown: 6.5 },
     weight: 4, elite: true,
-    desc: 'Слаб сам, но постоянно призывает скелетов. Приоритетная цель.',
+    desc: 'Weak itself, but it keeps summoning skeletons. Priority target.',
   },
 };
 

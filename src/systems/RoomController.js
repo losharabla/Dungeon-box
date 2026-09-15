@@ -188,7 +188,7 @@ export class RoomController {
         if (node.elite === true) {
           runtime.eliteBoss = true;
           this.spawner.spawnWave(
-            { label: 'Стража босса', count: CONFIG.room.bossGuardCount, elite: true, delay: 0 },
+            { label: 'Boss Guard', count: CONFIG.room.bossGuardCount, elite: true, delay: 0 },
             player.x,
             player.y,
           );

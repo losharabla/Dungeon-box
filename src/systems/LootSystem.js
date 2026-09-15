@@ -110,8 +110,8 @@ export class LootSystem {
     choices.push({
       kind: 'gold',
       id: 'gold_pile',
-      name: 'Золото',
-      desc: 'Куча монет для лавки.',
+      name: 'Gold',
+      desc: 'A pile of coins for the shop.',
       price: 0,
     });
 
@@ -154,7 +154,7 @@ export class LootSystem {
       kind: 'potion',
       id: 'potion',
       name: 'Potion',
-      desc: 'Восстанавливает 40% максимального здоровья.',
+      desc: 'Restores 40% of maximum health.',
       price: 30,
     });
 
@@ -176,7 +176,7 @@ export class LootSystem {
       kind: 'potion',
       id: 'greater_potion',
       name: 'Greater Potion',
-      desc: 'Полностью восстанавливает здоровье.',
+      desc: 'Fully restores health.',
       price: 120,
     });
 
@@ -221,7 +221,7 @@ export class LootSystem {
     }
 
     choices.push({
-      kind: 'gold', id: 'gold_pile', name: 'Золото', desc: 'Богатая добыча.', price: 0,
+      kind: 'gold', id: 'gold_pile', name: 'Gold', desc: 'A rich haul.', price: 0,
     });
     return choices;
   }

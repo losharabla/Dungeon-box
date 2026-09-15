@@ -104,7 +104,7 @@ export class CombatSystem {
 
     if (!target || !target.alive) return result;
     if (target.status.isInvulnerable()) {
-      this._showText(target, 'МИМО', FloatingTextSystem.COLORS.info, 13);
+      this._showText(target, 'MISS', FloatingTextSystem.COLORS.info, 13);
       return result;
     }
 
@@ -123,7 +123,7 @@ export class CombatSystem {
       // batter a guard down faster than a stream of light shots.
       this._drainShield(target, damage / SHIELD_WEIGHT_DAMAGE);
       this.particles.cone('spark', target.x, target.y, blockResult.angle, 8, 220);
-      this.floatingText.add(target.x, target.y - target.radius - 8, 'БЛОК', {
+      this.floatingText.add(target.x, target.y - target.radius - 8, 'BLOCK', {
         color: '#9fd8ff', size: 15,
       });
       this.bus.emit(EVENTS.STATUS_APPLIED, { entity: target, status: 'block' });
@@ -332,7 +332,7 @@ export class CombatSystem {
       target.shieldStamina = 0;
       target.shieldBreakTimer = SHIELD_BREAK_DURATION;
       this.particles.cone('spark', target.x, target.y, 0, 14, 300);
-      this.floatingText.add(target.x, target.y - target.radius - 12, 'ЩИТ СЛОМАН', {
+      this.floatingText.add(target.x, target.y - target.radius - 12, 'SHIELD BROKEN', {
         color: '#ffd166', size: 15, life: 1.1,
       });
       this.bus.emit(EVENTS.SHAKE_REQUESTED, 5);
@@ -358,7 +358,7 @@ export class CombatSystem {
     if (spec.stunChance && r() < spec.stunChance) {
       target.status.apply('stun', spec.stunDuration ?? 0.9, 1);
       this.particles.burst('lightning', target.x, target.y - target.radius, 8, { speed: 140 });
-      this.floatingText.add(target.x, target.y - target.radius - 26, 'ОГЛУШЁН', {
+      this.floatingText.add(target.x, target.y - target.radius - 26, 'STUNNED', {
         color: '#ffe14d', size: 13,
       });
     }
@@ -498,7 +498,7 @@ export class CombatSystem {
    * models a discrete **blow**, and two of its rules are wrong for a burn:
    *
    *  * **The post-hit mercy window.** Every accepted tick opened a fresh
-   *    `playerHurtIframe`, so 0.4 s of the fire's damage came back as "МИМО",
+   *    `playerHurtIframe`, so 0.4 s of the fire's damage came back as "MISS",
    *    and — far worse — the player was *continuously invulnerable* while
    *    standing in it. Measured: a 40-damage boss slam did 0 damage to a
    *    player standing in a fire wall. The fire was a god-mode button.
@@ -563,7 +563,7 @@ export class CombatSystem {
   _showText(target, text, color, size) {
     // Repeated words refresh the label that is already on screen instead of
     // stacking a copy per event: a blocked tick can arrive many times per
-    // frame, and "МИМО" sixty times a second is noise, not information.
+    // frame, and "MISS" sixty times a second is noise, not information.
     this.floatingText.addNotice(target.x, target.y - target.radius - 12, text, { color, size });
   }
 
