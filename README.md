@@ -33,30 +33,30 @@ The implementation follows the design document (`DESIGN.md`) in this folder.
 
 ---
 
-## Running the game
+## Play it
 
-**Double-click `RUN.bat`.** It opens a console, starts the local server and opens the
-game in the browser. Closing that console window stops the server. Node.js must be installed
-([nodejs.org](https://nodejs.org/)); the launcher says so instead of vanishing if it is missing.
+**In the browser, right now:** <https://losharabla.github.io/Dungeon-box/>
 
-ES modules cannot be loaded from `file://`, so the game needs *a* static server, and the same
-zero-dependency server can be run by hand:
+**Locally on Windows:** download the [latest release](../../releases/latest) as a zip, unpack
+it anywhere, and double-click **`RUN.bat`**. A console starts the local server and opens the
+game; closing that console stops the server. Nothing is installed and nothing is written
+outside the folder.
+
+**From a clone, on any OS:**
 
 ```bash
-node tools/serve.mjs                  # local only, first free port
-node tools/serve.mjs 3000             # a specific port
-node tools/serve.mjs --open           # open the browser as well
-node tools/serve.mjs --host 0.0.0.0   # allow other devices on the network
-node tools/serve.mjs --help           # usage
+git clone https://github.com/losharabla/Dungeon-box.git
+cd Dungeon-box
+node tools/serve.mjs --open
 ```
 
-The server binds `127.0.0.1` (local only) and prints the address it *actually* uses. If the
-requested port is reserved by Windows (`EACCES`) or already taken (`EADDRINUSE`), it moves to
-the next candidate automatically and opens the browser at the right address. That is not
-theoretical: Hyper-V, WSL and Docker reserve blocks of the Windows port range and re-roll them
-on reboot (`winnat` restart), which is why binding `8080` can work one day and fail the next.
+Node.js 18+ is needed for the local server — and only for that. There are no dependencies to
+install, no build step and no package manager involved. The game has to be served over HTTP
+because browsers refuse to load ES modules from `file://`; opening `index.html` directly gives
+you a blank page and CORS errors in the console.
 
-Any other static server works equally well (e.g. `python -m http.server`).
+The long version of this — network play, what the game stores, and a troubleshooting table —
+is in **[`INSTALL.md`](INSTALL.md)**.
 
 ### Controls
 
@@ -75,7 +75,7 @@ Any other static server works equally well (e.g. `python -m http.server`).
 
 ## Contents
 
-- [Running the game](#running-the-game) · [Controls](#controls)
+- [Play it](#play-it) · [Controls](#controls) · [`INSTALL.md`](INSTALL.md)
 - [Performance and presentation](#performance-and-presentation) — why an exotic weapon does not cost more per frame
 - [Architecture](#architecture) — the module map, the frame pipeline, and the object graph
 - [SOLID mapping](#solid-mapping) — how each principle is realised, with the file that shows it
@@ -164,6 +164,7 @@ imports a global `game` object; every system receives what it needs through its 
 ├── jsconfig.json       Optional: enables JSDoc-based type checking in an editor
 ├── package.json        Scripts only — the game itself has zero dependencies
 ├── DESIGN.md           The design document this implements
+├── INSTALL.md          How to install, run, and troubleshoot the game
 ├── RUN.bat             Double-click launcher: server + browser, stops with the window
 ├── LICENSE             MIT
 │
