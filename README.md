@@ -8,7 +8,7 @@ the repository is the original music track in `assets/music/`.
 
 **3 classes · 10 enemies · 3 bosses · 9 ultimates · 13 weapons · 4 room types · one run of choices**
 
-[![tests](https://github.com/losharabla/Rogalik/actions/workflows/ci.yml/badge.svg)](https://github.com/losharabla/Rogalik/actions/workflows/ci.yml)
+[![tests](https://github.com/losharabla/Dungeon-box/actions/workflows/ci.yml/badge.svg)](https://github.com/losharabla/Dungeon-box/actions/workflows/ci.yml)
 [![headless checks](https://img.shields.io/badge/headless%20checks-136%20in%20the%20fast%20gate-success.svg)](#tests)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen.svg)](package.json)
