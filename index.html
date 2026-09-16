@@ -29,9 +29,11 @@
         <p><b>Left click</b> — attack. A staff fires bolts</p>
         <p><b>Right click</b> — a staff's held beam, until it overheats</p>
         <p><b>Q</b> — ultimate</p>
-        <p><b>E</b> — interact (doors, shop, altar)</p>
-        <p><b>ESC</b> — pause</p>
+        <p><b>E</b> — interact (shop, altar)</p>
+        <p><b>ESC</b> — pause; also closes a shop or altar screen</p>
         <p><b>Space</b> — dash</p>
+        <p>Walking into an open doorway leaves the room — no key needed, and a
+        shop or an altar can be walked away from at any time.</p>
       </div>
     </div>
   </section>
@@ -78,9 +80,17 @@
       <div class="hud-hint" id="hud-hint" hidden></div>
 
       <div class="hud-bottom">
-        <div class="hud-weapon">
-          <div class="hud-label">Weapon</div>
-          <div class="hud-weapon-name" id="hud-weapon-name">—</div>
+        <!-- The loadout column: what is in hand and what the run has made of
+             the player. Its numbers come from Player.modifiers and the weapon
+             definition, so the panel cannot claim more than the simulation
+             actually applies. -->
+        <div class="hud-build">
+          <div class="hud-weapon">
+            <div class="hud-label">Weapon</div>
+            <div class="hud-weapon-name" id="hud-weapon-name">—</div>
+            <div class="hud-weapon-stats" id="hud-weapon-stats"></div>
+          </div>
+          <div class="hud-stats" id="hud-stats"></div>
         </div>
         <div class="hud-dash">
           <div class="hud-ult-head">

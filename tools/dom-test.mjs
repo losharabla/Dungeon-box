@@ -393,6 +393,100 @@ await check('UIManager renders shop stock and disables unaffordable items', asyn
   assert.equal(buttons[2].disabled, true, '260 gold is not affordable');
 });
 
+await check('the HUD shows the weapon line and the run\'s stacked stats', async () => {
+  // Reported problem: the HUD named the weapon and nothing else, so the
+  // numbers behind it — the damage multiplier, the attack-speed stack, the
+  // crit chance, the lifesteal that "was not sure to stack" — were invisible.
+  const { UIManager } = await import('../src/ui/UIManager.js');
+  const { Player } = await import('../src/entities/Player.js');
+  const { UPGRADES } = await import('../src/data/upgrades.js');
+
+  const ui = new UIManager({
+    startRun() {}, restart() {}, nextFloor() {}, resume() {}, abandonRun() {},
+    shopLeave() {}, healingLeave() {}, rewardTake() {}, buy() {}, pickReward() {},
+    selectCharacter() {},
+  });
+
+  const player = new Player({ classId: 'warrior', x: 0, y: 0, ultimateId: 'whirlwind' });
+  const run = { plan: null, currentNodeId: -1, clearedNodes: new Set(), floorIndex: 0 };
+  const rooms = { registry: { enemies: [] } };
+
+  ui.updateHud(player, run, rooms);
+  assert.match(ui.el.weaponStats.textContent, /22 dmg/, 'the weapon line must carry its damage');
+  assert.match(ui.el.weaponStats.textContent, /55 dps/, 'the weapon line must carry its dps');
+  assert.match(ui.el.hudStats.innerHTML, /LEECH<span class="v">0%<\/span>/,
+    'the character row must show every stacked stat, even at zero');
+  assert.ok(!/boosted/.test(ui.el.hudStats.innerHTML), 'a fresh run has nothing boosted yet');
+
+  // Two copies of Vampiric Edge: the chip is the running total, which is the
+  // number the player could not see before.
+  UPGRADES.life_steal.apply(player);
+  UPGRADES.life_steal.apply(player);
+  ui.updateHud(player, run, rooms);
+  assert.match(ui.el.hudStats.innerHTML, /LEECH<span class="v">10%<\/span>/,
+    'the chip must show the stacked total');
+  assert.match(ui.el.hudStats.innerHTML, /stat-chip boosted/, 'a raised stat must be highlighted');
+
+  // A staff must advertise the mode the mage actually plays.
+  const { getWeapon } = await import('../src/data/weapons.js');
+  player.equip(getWeapon('fire_staff'));
+  ui.updateHud(player, run, rooms);
+  assert.match(ui.el.weaponStats.textContent, /beam 30\/s/, 'the staff line must carry its beam');
+  assert.match(ui.el.weaponStats.textContent, /burn 6\/s/, 'the staff line must carry its burn');
+});
+
+await check('shop and reward cards say what the totals become', async () => {
+  // "It is unclear whether it adds to what I already have" — the card has to
+  // answer that, and it can only do so by reading the player's current value.
+  const { UIManager } = await import('../src/ui/UIManager.js');
+  const { Player } = await import('../src/entities/Player.js');
+
+  const ui = new UIManager({
+    startRun() {}, restart() {}, nextFloor() {}, resume() {}, abandonRun() {},
+    shopLeave() {}, healingLeave() {}, rewardTake() {}, buy() {}, pickReward() {},
+    selectCharacter() {},
+  });
+
+  const player = new Player({ classId: 'warrior', x: 0, y: 0, ultimateId: 'whirlwind' });
+  player.modifiers.lifeSteal = 0.05; // already owns one Vampiric Edge
+  player.gold = 500;
+
+  const stock = [
+    { kind: 'upgrade', id: 'life_steal', name: 'Vampiric Edge', desc: 'd', price: 140 },
+    { kind: 'weapon', id: 'battle_axe', name: 'Battle Axe', desc: 'd', price: 50 },
+    { kind: 'potion', id: 'potion', name: 'Potion', desc: 'd', price: 30 },
+  ];
+  ui.openShop(stock, player);
+
+  const cards = ui.el.shopGrid.querySelectorAll('.shop-item');
+  assert.equal(cards.length, 3, 'every stock entry must render');
+  const deltaOf = (card) => card.querySelectorAll('.si-delta')[0]?.textContent ?? '';
+  assert.equal(
+    deltaOf(cards[0]),
+    'Life steal 5% → 10%',
+    'a second copy must be shown as an addition to the first',
+  );
+  assert.match(deltaOf(cards[1]), /37 dmg/, 'a weapon offer must carry its own stats');
+  assert.equal(deltaOf(cards[2]), '', 'a potion has nothing to compare');
+
+  // The reward overlay renders the same line through the same helper.
+  ui.openReward([
+    { kind: 'upgrade', id: 'life_steal', name: 'Vampiric Edge', desc: 'd', price: 0 },
+    { kind: 'gold', id: 'gold_pile', name: 'Gold', desc: 'd', price: 0 },
+  ], player);
+  const rewardCards = ui.el.rewardGrid.querySelectorAll('.reward-item');
+  assert.equal(rewardCards.length, 2, 'both reward choices must render');
+  assert.equal(
+    rewardCards[0].querySelectorAll('.si-delta')[0]?.textContent,
+    'Life steal 5% → 10%',
+  );
+  assert.equal(
+    rewardCards[1].querySelectorAll('.si-delta').length,
+    0,
+    'gold needs no comparison line',
+  );
+});
+
 await check('main.js boots and wires the loop without throwing', async () => {
   // The strongest available end-to-end check: import the real entry point.
   await import('../src/main.js');
@@ -617,6 +711,46 @@ await check('a boss victory advances to the next floor through the real UI', asy
   assert.equal(state.current, 'victory', 'the final boss must also show the victory screen');
   assert.equal(ui.el.nextFloorBtn.hidden, true, 'the final floor must not offer a 4th floor');
   assert.equal(game.run.active, false, 'the run must be over after the final boss');
+});
+
+await check('a used shop reopens, and ESC backs out of its screen', async () => {
+  // The reported problem, driven through the real keyboard path: walk to the
+  // stall, press E, press ESC, press E again. The shop used to be consumed by
+  // its own screen, so the second press did nothing.
+  const handle = /** @type {any} */ (globalThis.window).__roguelike;
+  assert.ok(handle?.interact && handle?.togglePause, 'the debug handle must expose the keyboard path');
+  const { game, ui, state } = handle;
+  state.force('playing');
+
+  let found = false;
+  for (let seed = 1; seed < 200 && !found; seed++) {
+    game.startRun('warrior', 'whirlwind', seed);
+    const offer = game.run.exits().find((o) => o.type === 'shop');
+    if (!offer) continue;
+    game.travelTo(offer.id);
+    found = true;
+  }
+  assert.ok(found, 'a seeded floor must offer a shop');
+
+  // Entering a room leaves the player at its centre, which is where the stall
+  // is, so no walking is needed to be in range of the merchant.
+  const centre = game.rooms.runtime.room.center;
+  const player = game.getPlayer();
+  player.x = centre.x;
+  player.y = centre.y;
+
+  handle.interact();
+  assert.equal(ui.el.shop.hidden, false, 'E must open the shop screen');
+  assert.equal(game.rooms.runtime.cleared, true, 'the visit consumes the room');
+
+  handle.togglePause();
+  assert.equal(ui.el.shop.hidden, true, 'ESC must close the shop screen');
+  assert.equal(state.current, 'playing', 'ESC must not stack the pause screen on top of it');
+
+  handle.interact();
+  assert.equal(ui.el.shop.hidden, false, 'the same shop must open again');
+  assert.equal(game.getInteraction()?.kind, 'shop', 'the stall must stay usable');
+  handle.togglePause();
 });
 
 /* ---------- Report ---------------------------------------------------- */

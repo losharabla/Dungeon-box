@@ -1698,6 +1698,262 @@ await check('REGRESSION: a cleared room always has an open door', async () => {
   assert.ok(checked >= 4, `expected to traverse several rooms, checked ${checked}`);
 });
 
+/**
+ * A game already standing in a room of the given type, or null.
+ *
+ * The floor is dealt one step at a time, so a shop only exists if a seed
+ * offers one; this walks seeds until it finds that first step.
+ * @param {string} type
+ * @param {string} [classId]
+ * @param {string} [ultimateId]
+ * @returns {Promise<any|null>}
+ */
+async function gameInRoomOfType(type, classId = 'warrior', ultimateId = 'whirlwind') {
+  const { EventBus } = await import('../src/core/EventBus.js');
+  const { StateMachine } = await import('../src/core/StateMachine.js');
+  const { Game } = await import('../src/game/Game.js');
+
+  for (let seed = 1; seed < 200; seed++) {
+    const bus = new EventBus();
+    const game = new Game({
+      bus,
+      state: new StateMachine(bus, 'menu'),
+      callbacks: {
+        onStateChange() {}, onRoomCleared() {}, onBossSpawned() {},
+        onPlayerDeath() {}, onNotice() {},
+      },
+    });
+    game.startRun(classId, ultimateId, seed);
+    const offer = game.run.exits().find((o) => o.type === type);
+    if (!offer) continue;
+    game.travelTo(offer.id);
+    return game;
+  }
+  return null;
+}
+
+/** Put the player in the middle of a doorway. @param {any} game @param {any} door */
+function standInDoorway(game, door) {
+  const player = game.getPlayer();
+  player.x = door.rect.x + door.rect.w / 2;
+  player.y = door.rect.y + door.rect.h / 2;
+}
+
+await check('REGRESSION: a shop or an altar can be left without using it', async () => {
+  // Reported problem: the shop and the altar handed out their overlay only when
+  // the player pressed E at the room centre, and until they did, nothing else
+  // in the room was interactable — `getInteraction()` returned null everywhere
+  // in it and the auto-travel gate refused to fire. The only way out of a shop
+  // was therefore to open the shop.
+  const game = await gameInRoomOfType('shop');
+  assert.ok(game, 'a seeded floor must offer a shop');
+
+  const rt = game.rooms.runtime;
+  assert.equal(rt.cleared, false, 'the shop has not been used yet');
+  assert.ok(
+    rt.room.doors.every((d) => d.open),
+    'a support room starts with its doors open',
+  );
+
+  const door = rt.room.doors[0];
+  standInDoorway(game, door);
+  const interaction = game.getInteraction();
+  assert.equal(interaction?.kind, 'door', 'the doorway of an unused shop must be usable');
+  assert.equal(interaction?.door, door, 'the interaction must name the door being stood in');
+  assert.equal(game.doorAtPlayer(34), door, 'walking into the doorway must be enough to travel');
+
+  const from = game.run.currentNodeId;
+  const result = game.interact();
+  assert.equal(result?.kind, 'travel', 'the doorway must take the player onward');
+  assert.notEqual(game.run.currentNodeId, from, 'the player must have left the shop');
+
+  // The room that fights for its content still refuses to be walked out of: a
+  // sealed doorway is not an exit, so a fight can never be skipped.
+  const arena = await gameInRoomOfType('arena');
+  assert.ok(arena, 'a seeded floor must offer an arena');
+  const arenaDoor = arena.rooms.runtime.room.doors[0];
+  assert.equal(arenaDoor.open, false, 'an arena seals its doors on entry');
+  standInDoorway(arena, arenaDoor);
+  assert.equal(arena.doorAtPlayer(34), null, 'a sealed doorway must not report as a door');
+  assert.equal(arena.getInteraction(), null, 'a sealed arena must offer no exit');
+});
+
+await check('the shop stays open for business after the first visit', async () => {
+  // The other half of the reported problem: once the shop screen had been
+  // opened the room was marked consumed, `getInteraction()` stopped reporting
+  // the stall, and the player could not spend the rest of their gold on the
+  // stock that was still sitting there.
+  const game = await gameInRoomOfType('shop');
+  assert.ok(game, 'a seeded floor must offer a shop');
+
+  const rt = game.rooms.runtime;
+  const player = game.getPlayer();
+  const centre = rt.room.center;
+  player.x = centre.x;
+  player.y = centre.y;
+
+  const first = game.interact();
+  assert.equal(first?.kind, 'shop', 'the stall must open on E');
+  assert.ok(first.payload.stock.length > 0, 'the shop must have stock');
+  assert.equal(rt.cleared, true, "opening the shop consumes the room's offer");
+
+  // Step away and return: the stall is still there, with the same stock.
+  player.x = centre.x + 200;
+  assert.equal(game.getInteraction(), null, 'the prompt only appears near the stall');
+  player.x = centre.x;
+  const second = game.interact();
+  assert.equal(second?.kind, 'shop', 'a used shop must still be usable');
+  assert.equal(second.payload.stock, first.payload.stock, 'the same stock array comes back');
+
+  // Buying from the reopened screen works, and the sold flag sticks.
+  player.addGold(2000);
+  const buyable = second.payload.stock.find((item) => player.canAfford(item.price));
+  assert.ok(buyable, 'a 2000-gold purse must afford something in the stock');
+  assert.equal(game.buy(buyable), true, 'the purchase must go through');
+  assert.equal(buyable.sold, true, 'a bought entry must be marked sold');
+  const third = game.interact();
+  assert.equal(third?.kind, 'shop', 'the shop must still open after a purchase');
+  assert.equal(third.payload.stock.find((item) => item === buyable).sold, true,
+    'a sold entry must stay sold in the reopened stock');
+});
+
+await check('REGRESSION: lifesteal returns health from the beam and from burning', async () => {
+  // Reported problem: Vampiric Edge healed on bolts and melee but not on the
+  // staff's held beam or on the burn the fire staff applies — the two damage
+  // paths that never go through `applyHit`, which is where lifesteal lived. A
+  // mage who took it saw no healing at all while beaming, i.e. in the weapon's
+  // headline mode, so the upgrade read as broken.
+  const { EventBus } = await import('../src/core/EventBus.js');
+  const { StateMachine } = await import('../src/core/StateMachine.js');
+  const { Game } = await import('../src/game/Game.js');
+
+  const bus = new EventBus();
+  const game = new Game({
+    bus,
+    state: new StateMachine(bus, 'menu'),
+    callbacks: {
+      onStateChange() {}, onRoomCleared() {}, onBossSpawned() {},
+      onPlayerDeath() {}, onNotice() {},
+    },
+  });
+  game.startRun('mage', 'meteor', 4);
+
+  const player = game.getPlayer();
+  // A punching bag: lifesteal has to be measured against damage that lands,
+  // and the target must survive the burn to tick at all.
+  const bag = game.spawner.spawnEnemy('goblin', player.x + 60, player.y);
+  bag.maxHp = 5000;
+  bag.hp = 5000;
+
+  player.modifiers.lifeSteal = 0.2;
+
+  // The beam is continuous: per-frame slices through applyDamageOverTime.
+  player.hp = 40;
+  const beamBefore = player.hp;
+  for (let i = 0; i < 30; i++) game.combat.applyDamageOverTime(bag, 60, 1 / 60, player);
+  assert.ok(
+    player.hp > beamBefore,
+    `a held beam must return health (${beamBefore} -> ${player.hp})`,
+  );
+
+  // Burning ticks from the status, carrying no source of its own.
+  player.hp = 40;
+  const burnBefore = player.hp;
+  game.combat.applyStatus(bag, { burnChance: 1, burnDuration: 3, burnDamage: 20 }, player);
+  assert.equal(bag.burnSource, player, 'the burn must remember who lit it');
+  for (let i = 0; i < 120; i++) game.combat.updateStatusDamage(1 / 60, [bag]);
+  assert.ok(
+    player.hp > burnBefore,
+    `burning must return health (${burnBefore} -> ${player.hp})`,
+  );
+
+  // Without the upgrade nothing is returned: this is a ratio, not a heal.
+  player.modifiers.lifeSteal = 0;
+  bag.hp = bag.maxHp;
+  player.hp = 40;
+  game.combat.applyDamageOverTime(bag, 60, 1 / 60, player);
+  assert.equal(player.hp, 40, 'without lifesteal nothing may be healed');
+});
+
+await check('Vampiric Edge stacks additively, and the offer says what the total becomes', async () => {
+  // The complaint behind this: taking a second copy of an upgrade the player
+  // already owns looked exactly like taking the first one, because the card
+  // only ever printed the static description. The card now has to answer
+  // "does it stack?" — and the answer has to be the truth.
+  const { EventBus } = await import('../src/core/EventBus.js');
+  const { StateMachine } = await import('../src/core/StateMachine.js');
+  const { Game } = await import('../src/game/Game.js');
+  const { UPGRADES, getUpgrade } = await import('../src/data/upgrades.js');
+  const { getWeapon } = await import('../src/data/weapons.js');
+  const { characterStatChips, upgradeDeltaLine, weaponStatLine } = await import('../src/ui/statDisplay.js');
+
+  const bus = new EventBus();
+  const game = new Game({
+    bus,
+    state: new StateMachine(bus, 'menu'),
+    callbacks: {
+      onStateChange() {}, onRoomCleared() {}, onBossSpawned() {},
+      onPlayerDeath() {}, onNotice() {},
+    },
+  });
+  game.startRun('warrior', 'whirlwind', 7);
+  const player = game.getPlayer();
+
+  const def = getUpgrade('life_steal');
+  assert.match(upgradeDeltaLine(def, player), /Life steal 0% → 5%/);
+  def.apply(player);
+  assert.equal(player.modifiers.lifeSteal, 0.05);
+  assert.match(
+    upgradeDeltaLine(def, player),
+    /Life steal 5% → 10%/,
+    'a second copy must read as an addition to the first, not as a fresh 5%',
+  );
+  def.apply(player);
+  assert.equal(player.modifiers.lifeSteal, 0.10, 'two copies must stack additively');
+
+  // The HUD chip is the same total, marked as boosted.
+  const leech = characterStatChips(player).find((chip) => chip.label === 'LEECH');
+  assert.equal(leech.text, '10%');
+  assert.equal(leech.boosted, true, 'a raised stat must be marked for the HUD');
+
+  // The percentage-of-health blessing has to describe itself in health, and
+  // the amount it promises must be the amount `apply` grants.
+  const hp = getUpgrade('heal_max_hp_10');
+  const maxBefore = player.maxHp;
+  const expected = Math.round(maxBefore * 0.10);
+  assert.equal(
+    upgradeDeltaLine(hp, player),
+    `Max HP ${maxBefore} → ${maxBefore + expected}`,
+  );
+  hp.apply(player);
+  assert.equal(player.maxHp, maxBefore + expected, 'the line must match what apply does');
+
+  // Every upgrade in the table is describable: a missing `stat` would silently
+  // drop the delta line off its card.
+  for (const up of Object.values(UPGRADES)) {
+    assert.ok(upgradeDeltaLine(up, player), `${up.id} needs a stat line for its card`);
+  }
+
+  // Weapon stats are the numbers combat actually uses.
+  const sword = weaponStatLine(getWeapon('sword'), player);
+  assert.match(sword, /22 dmg/, `the sword line must carry its damage (${sword})`);
+  assert.match(sword, /0\.40s/, `the sword line must carry its cadence (${sword})`);
+  assert.match(sword, /55 dps/, `the sword line must carry its dps (${sword})`);
+  const shotgun = weaponStatLine(getWeapon('shotgun'), player);
+  assert.match(shotgun, /12×7 dmg/, `pellets must be shown per shot (${shotgun})`);
+  const staff = weaponStatLine(getWeapon('fire_staff'), player);
+  assert.match(staff, /staff/, 'the staff line must name its kind');
+  assert.match(staff, /burn 6\/s/, 'the staff line must carry its burn');
+  assert.match(staff, /beam 30\/s/, 'the staff line must carry its held beam');
+  const voidStaff = weaponStatLine(getWeapon('staff_of_the_void'), player);
+  assert.match(voidStaff, /pierce all/, `a full pierce must read as such (${voidStaff})`);
+
+  // Attack speed is a permanent modifier, so it is part of the printed dps.
+  player.modifiers.attackSpeedMul = 2;
+  assert.match(weaponStatLine(getWeapon('sword'), player), /110 dps/,
+    'a doubled attack rate must double the printed dps');
+});
+
 await check('REGRESSION: a timed door seal releases on schedule', async () => {
   // A finite seal must expire on its own, and an infinite one must not.
   const { Room } = await import('../src/entities/Room.js');

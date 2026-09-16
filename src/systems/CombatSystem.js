@@ -156,7 +156,7 @@ export class CombatSystem {
       target.status.apply('hurtIframe', CONFIG.combat.playerHurtIframe, 1);
     }
 
-    this.applyStatus(target, spec);
+    this.applyStatus(target, spec, source);
     this._knockback(target, source, spec);
 
     // Presentation.
@@ -347,12 +347,17 @@ export class CombatSystem {
    * beam applies statuses every tick and must not grow a second copy of this.
    * @param {import('../entities/Entity.js').Entity} target
    * @param {HitSpec} spec
+   * @param {any} [source] who inflicted it, remembered for burn ticks
    */
-  applyStatus(target, spec) {
+  applyStatus(target, spec, source) {
     const r = this.random;
     if (spec.burnChance && r() < spec.burnChance) {
       target.status.apply('burn', spec.burnDuration ?? 2.5, 1);
       target.burnDamage = spec.burnDamage ?? 5;
+      // Remember who lit it. A burn tick is damage like any other, so the
+      // attacker's lifesteal has to see it — the tick carries no source of
+      // its own, which is why this is stored at all.
+      target.burnSource = source ?? null;
       this.particles.burst('fire', target.x, target.y, 6, { speed: 90 });
     }
     if (spec.slowChance && r() < spec.slowChance) {
@@ -378,6 +383,43 @@ export class CombatSystem {
     // Bosses are too heavy to shove around.
     const resistance = target.kind === 'boss' ? 0.12 : 1;
     target.applyKnockback(source.x, source.y, spec.knockback * resistance);
+  }
+
+  /**
+   * Return a fraction of the damage just dealt to the entity that dealt it.
+   *
+   * `lifeSteal` is the Vampiric Edge upgrade (§20) and it belongs to the
+   * attacker, so *every* damage path has to route through here. Two of them
+   * did not — the held beam and burn ticks — which is why the upgrade looked
+   * broken for a staff: it healed on the bolts and not on the weapon's second
+   * firing mode.
+   * @param {any} source
+   * @param {number} amount damage actually applied
+   * @returns {number} health actually restored
+   */
+  _drainLifeSteal(source, amount) {
+    const lifeSteal = source?.modifiers?.lifeSteal ?? 0;
+    if (!(lifeSteal > 0) || !(amount > 0)) return 0;
+    return source.heal(amount * lifeSteal);
+  }
+
+  /**
+   * Print the lifesteal a continuous source has pooled.
+   *
+   * Healing itself happens every step; only the *number* waits. A held beam
+   * lands 60 slices a second, and one floating label per slice is both
+   * unreadable and the expensive kind of frame. The pool is left to grow
+   * until it is worth a whole point, so a weak trickle prints nothing rather
+   * than a column of "+0".
+   * @param {any} source
+   */
+  _flushLifeStealLabel(source) {
+    const pool = source?.lifeStealPool ?? 0;
+    if (!(pool >= 1)) return;
+    source.lifeStealPool = 0;
+    this.floatingText.add(source.x, source.y - source.radius - 14, `+${Math.round(pool)}`, {
+      color: FloatingTextSystem.COLORS.heal, size: 14,
+    });
   }
 
   /**
@@ -416,15 +458,13 @@ export class CombatSystem {
       if (source.addUltCharge(applied * CONFIG.combat.ultChargePerDamage)) {
         this.bus.emit(EVENTS.ULTIMATE_CHANGED, { player: source, ready: true });
       }
-      // Lifesteal upgrades (§20 temporary upgrades).
-      const lifeSteal = source.modifiers?.lifeSteal ?? 0;
-      if (lifeSteal > 0) {
-        const healed = source.heal(applied * lifeSteal);
-        if (healed > 0) {
-          this.floatingText.add(source.x, source.y - source.radius - 14, `+${Math.round(healed)}`, {
-            color: FloatingTextSystem.COLORS.heal, size: 14,
-          });
-        }
+      // Lifesteal upgrades (§20 temporary upgrades). A single impact is a
+      // single number, so it is printed straight away.
+      const healed = this._drainLifeSteal(source, applied);
+      if (healed > 0) {
+        this.floatingText.add(source.x, source.y - source.radius - 14, `+${Math.round(healed)}`, {
+          color: FloatingTextSystem.COLORS.heal, size: 14,
+        });
       }
       // Bloodthirster heals on kill, handled in _handleDeath.
     }
@@ -534,7 +574,13 @@ export class CombatSystem {
 
     // Statistics count every step, so they match the health bar exactly.
     if (target.faction === 'player') target.stats.damageTaken += applied;
-    else if (source && source.faction === 'player') source.stats.damageDealt += applied;
+    else if (source && source.faction === 'player') {
+      source.stats.damageDealt += applied;
+      // A held beam heals its owner per step so the bar moves smoothly, but
+      // the number waits for the pooled label below.
+      const drained = this._drainLifeSteal(source, applied);
+      if (drained > 0) source.lifeStealPool = (source.lifeStealPool ?? 0) + drained;
+    }
 
     // Feedback is batched: the damage above is continuous, but the label,
     // sound and shake arrive a few times a second instead of every frame.
@@ -554,6 +600,9 @@ export class CombatSystem {
         this.floatingText.addDamage(target.x, target.y - target.radius - 10, chunk, {
           color: opts.color ?? FloatingTextSystem.COLORS.damage, size: 14,
         });
+        // The lifesteal this beam returned rides the same cadence, so the two
+        // numbers on screen always describe the same slice of the beam.
+        this._flushLifeStealLabel(source);
       }
     }
     return applied;
@@ -583,6 +632,10 @@ export class CombatSystem {
     for (const e of entities) {
       if (!e.alive) continue;
       if (e.status.has('burn')) {
+        // Who lit the fire. The tick is the attacker's damage, so it has to
+        // carry their lifesteal like any other hit; only the applier knows
+        // whose it was, which is why `applyStatus` stores it.
+        const source = e.burnSource ?? this.registry.player;
         const ticks = e.status.consumeTicks('burn', dt, interval);
         for (let i = 0; i < ticks; i++) {
           // `burnDamage` is a rate, so the tick carries `rate * interval`.
@@ -596,9 +649,14 @@ export class CombatSystem {
               color: '#ff8a3d', size: 12, life: 0.5,
             });
             this.particles.burst('fire', e.x, e.y - e.radius * 0.5, 2, { speed: 60 });
+            const drained = this._drainLifeSteal(source, applied);
+            if (drained > 0) source.lifeStealPool = (source.lifeStealPool ?? 0) + drained;
+            // One tick is already a batched slice, so the pooled number can
+            // be printed here without adding a second cadence.
+            this._flushLifeStealLabel(source);
           }
           if (!e.alive) {
-            this._handleDeath(e, this.registry.player);
+            this._handleDeath(e, source);
             break;
           }
         }

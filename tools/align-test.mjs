@@ -274,6 +274,28 @@ check('the room strip hugs the top instead of the middle of the screen', async (
   );
 });
 
+check('the loadout rows stay in the HUD flow', async () => {
+  // The weapon stat line and the character chips are new HUD rows. They belong
+  // to the bottom column's flow like every other row: floating them over the
+  // world would put a second, invisible layout on top of the game.
+  const css = await readCss();
+  const blockOf = (/** @type {string} */ sel) => {
+    const start = css.indexOf(sel);
+    assert.ok(start >= 0, `${sel} must exist in style.css`);
+    return css.slice(css.indexOf('{', start) + 1, css.indexOf('}', start));
+  };
+  for (const sel of ['.hud-build {', '.hud-weapon-stats {', '.hud-stats {']) {
+    assert.ok(
+      !/position:\s*absolute/.test(blockOf(sel)),
+      `${sel} must stay in the HUD flow, not float over the world`,
+    );
+  }
+  assert.ok(
+    /flex-direction:\s*column/.test(blockOf('.hud-build {')),
+    'the loadout column must stack the weapon over the character stats',
+  );
+});
+
 /* ---------- Report ---------------------------------------------------- */
 
 let failures = 0;

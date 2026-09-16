@@ -420,6 +420,38 @@ export class Game {
      ============================================================ */
 
   /**
+   * The open door the player is standing in, or null.
+   *
+   * Only a door that leads somewhere counts: the fallback doorway of a room
+   * with nothing beyond it is scenery, and a sealed doorway is not an exit.
+   * The prompt (`getInteraction`) and the walk-into-a-doorway travel both ask
+   * this one query, so they can never disagree about which opening the player
+   * is in.
+   * @param {number} [radius] how close to the doorway centre counts, px
+   * @returns {any|null}
+   */
+  doorAtPlayer(radius = 34) {
+    const rt = this.rooms.runtime;
+    const player = this.player;
+    if (!rt || !player || !player.alive) return null;
+
+    let nearest = null;
+    let nearestDistance = Infinity;
+    for (const door of rt.room.doors) {
+      if (!door.open) continue;
+      if (door.targetRoomId === undefined || door.targetRoomId === null) continue;
+      const dx = player.x - (door.rect.x + door.rect.w / 2);
+      const dy = player.y - (door.rect.y + door.rect.h / 2);
+      const distance = Math.hypot(dx, dy);
+      if (distance < radius && distance < nearestDistance) {
+        nearest = door;
+        nearestDistance = distance;
+      }
+    }
+    return nearest;
+  }
+
+  /**
    * What the player can interact with right now, or null.
    * @returns {{kind: string, distance: number, door?: any}|null}
    */
@@ -431,27 +463,22 @@ export class Game {
     const c = rt.room.center;
     const d = Math.hypot(player.x - c.x, player.y - c.y);
 
-    if ((rt.type === 'healing' || rt.type === 'shop') && !rt.cleared) {
-      return d < 120 ? { kind: rt.type, distance: d } : null;
-    }
+    // The shop keeps its stock — sold entries included — for as long as the
+    // player is in the room, so it stays usable after the first visit. The
+    // altar's gift is a one-time offer, so it stops responding once taken.
+    const support = rt.type === 'shop' || (rt.type === 'healing' && !rt.cleared);
+    if (support && d < 120) return { kind: rt.type, distance: d };
 
     // A door the player is standing in. Every room has several, so the one
     // they are inside is reported rather than "the first neighbour": the
-    // interaction has to be able to say *which* room it leads to.
-    if (rt.cleared || rt.type === 'start') {
-      let nearest = null;
-      let nearestDistance = Infinity;
-      for (const door of rt.room.doors) {
-        if (!door.open) continue;
-        const dx = player.x - (door.rect.x + door.rect.w / 2);
-        const dy = player.y - (door.rect.y + door.rect.h / 2);
-        const distance = Math.hypot(dx, dy);
-        if (distance < 70 && distance < nearestDistance) {
-          nearest = door;
-          nearestDistance = distance;
-        }
-      }
-      if (nearest) return { kind: 'door', distance: nearestDistance, door: nearest };
+    // interaction has to be able to say *which* room it leads to. Doors are
+    // open only while the room is not sealed, so this path can never skip a
+    // fight: an arena or a boss room reports nothing until it is cleared.
+    const door = this.doorAtPlayer(70);
+    if (door) {
+      const cx = door.rect.x + door.rect.w / 2;
+      const cy = door.rect.y + door.rect.h / 2;
+      return { kind: 'door', distance: Math.hypot(player.x - cx, player.y - cy), door };
     }
     return null;
   }
@@ -483,6 +510,10 @@ export class Game {
     }
 
     if (interaction.kind === 'shop') {
+      // The room is marked consumed so the run knows its offer was seen, but
+      // the stall itself stays open: `getInteraction()` keeps reporting the
+      // shop for as long as the player is in the room, and the same stock
+      // array (with its `sold` flags) is handed back on every visit.
       this.rooms.markConsumed(rt);
       return { kind: 'shop', payload: { stock: rt.shopStock } };
     }

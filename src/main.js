@@ -214,6 +214,12 @@ function closeOverlay() {
 
 /** Pause / resume (design doc §22). */
 function togglePause() {
+  // ESC also backs out of a shop or an altar screen: a room whose content is
+  // optional must not require a mouse trip to its "leave" button.
+  if (activeOverlay === 'shop' || activeOverlay === 'healing') {
+    closeOverlay();
+    return;
+  }
   if (state.current === 'playing' || state.current === 'boss') {
     state.force('pause');
     activeOverlay = 'pause';
@@ -431,7 +437,12 @@ function handleInteraction(result) {
 }
 
 /**
- * Walk into an open door to leave a cleared room without pressing a key.
+ * Walk into an open door to leave a room without pressing a key.
+ *
+ * A room's content does not have to be consumed first: the shop and the altar
+ * can simply be walked away from, which is why this asks the world whether the
+ * player is in a doorway that leads somewhere rather than whether the room is
+ * cleared. A sealed room has no open door, so a fight still cannot be left.
  *
  * The player must first step away from the doorway, otherwise arriving in
  * the next room (already standing in its entry doorway) would immediately
@@ -439,27 +450,14 @@ function handleInteraction(result) {
  */
 let doorArmed = true;
 function autoTravelIfAtDoor() {
-  const rt = game.rooms.runtime;
   const player = game.getPlayer();
-  if (!rt || !player || !player.alive) return;
-  if (!rt.cleared && rt.type !== 'start') return;
+  if (!player || !player.alive) return;
   if (activeOverlay) return;
 
   const node = game.run.currentNode();
   if (!node || node.next.length === 0) return;
 
-  let entered = null;
-  let enteredDistance = Infinity;
-  for (const door of rt.room.doors) {
-    if (!door.open) continue;
-    const cx = door.rect.x + door.rect.w / 2;
-    const cy = door.rect.y + door.rect.h / 2;
-    const distance = Math.hypot(player.x - cx, player.y - cy);
-    if (distance < 34 && distance < enteredDistance) {
-      entered = door;
-      enteredDistance = distance;
-    }
-  }
+  const entered = game.doorAtPlayer(34);
 
   // Hysteresis: re-arm only once the player is clear of every doorway.
   if (!entered) {
@@ -620,4 +618,14 @@ ui.showScreen('menu');
 loop.start();
 
 // Expose a minimal handle for debugging in the console.
-Object.assign(window, { __roguelike: { game, bus, state, render, ui, loop, audio } });
+//
+// `interact` and `togglePause` are the keyboard's own way into the overlays;
+// publishing them lets the DOM test drive the real path (walk up, press E,
+// press ESC) instead of re-implementing the routing it is meant to verify.
+Object.assign(window, {
+  __roguelike: {
+    game, bus, state, render, ui, loop, audio,
+    interact: () => handleInteraction(game.interact()),
+    togglePause,
+  },
+});

@@ -128,8 +128,12 @@ export class SceneRenderer {
       drawAtmosphere(ctx, scene.room, time, this.render);
     }
 
-    const canExit = scene.runtime?.cleared ?? scene.room.type === 'start';
-    drawExitMarkers(ctx, scene.room, canExit, time);
+    // Whether a room is leaveable is a property of its doors, not of its
+    // state: every doorway that is open and leads somewhere gets a marker, and
+    // the entrance — where the player picks one of three — is no exception.
+    // Deriving it from `runtime.cleared` used to hide the markers in the
+    // entrance and in the shop/altar rooms, whose content is optional.
+    drawExitMarkers(ctx, scene.room, time);
 
     // --- Projectiles (under characters so bodies stay readable) ----------
     for (const p of scene.projectiles.projectiles) {

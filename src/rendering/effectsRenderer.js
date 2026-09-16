@@ -369,13 +369,26 @@ export function drawAtmosphere(ctx, room, time, render) {
  * Each marker is drawn in the colour of the room the door leads to — the
  * same colour as the door plate and the HUD node — so the chevron reads as
  * "walk here to reach a *shop*" rather than as a generic arrow.
+ *
+ * Two details are what make it readable, and both were wrong before:
+ *
+ *   - the chevron is rotated to point *out* through its own doorway. A single
+ *     downward-pointing triangle told the truth only for a south door, and
+ *     for a north door it landed squarely on the plate that names the
+ *     destination, so the arrow and the text covered each other;
+ *   - it is anchored on the room side of the opening, 72px along the inward
+ *     normal, while the plate sits outside along the outward one. The two can
+ *     therefore never overlap, and the marker is always on the side the
+ *     player is standing on.
+ *
+ * A sealed doorway gets no marker (the door is not open), and a doorway with
+ * nothing beyond it is scenery rather than an exit.
  * @param {CanvasRenderingContext2D} ctx
  * @param {import('../entities/Room.js').Room} room
- * @param {boolean} active
  * @param {number} time
  */
-export function drawExitMarkers(ctx, room, active, time) {
-  if (!active) return;
+export function drawExitMarkers(ctx, room, time) {
+  const c = room.center;
   for (const door of room.doors) {
     if (!door.open) continue;
     // A door with no destination is scenery, not an exit.
@@ -383,11 +396,28 @@ export function drawExitMarkers(ctx, room, active, time) {
     const color = roomTypeColor(door.targetType, { elite: door.elite === true });
     const cx = door.rect.x + door.rect.w / 2;
     const cy = door.rect.y + door.rect.h / 2;
+
+    // Outward normal: the direction the player travels to take this door.
+    const nx = cx - c.x;
+    const ny = cy - c.y;
+    const len = Math.hypot(nx, ny) || 1;
+    const ox = nx / len;
+    const oy = ny / len;
+
+    // Anchored inside the room, bobbing along the normal so the pulse reads
+    // as "towards the doorway" on every side rather than only vertically.
+    const bob = Math.sin(time * 3) * 4;
+    const mx = cx - ox * 72 + ox * bob;
+    const my = cy - oy * 72 + oy * bob;
     const pulse = 0.5 + Math.sin(time * 4) * 0.25;
-    glow(ctx, cx, cy, 70, color, pulse * 0.5);
-    // Chevron pointing into the doorway.
+    glow(ctx, mx, my, 70, color, pulse * 0.5);
+
+    // Chevron pointing into the doorway. The shape points along +y locally,
+    // so aiming it along the outward normal is that normal's angle minus a
+    // quarter turn.
     ctx.save();
-    ctx.translate(cx, cy - 34 - Math.sin(time * 3) * 4);
+    ctx.translate(mx, my);
+    ctx.rotate(Math.atan2(oy, ox) - Math.PI / 2);
     ctx.fillStyle = hexAlpha(color, 0.9);
     ctx.beginPath();
     ctx.moveTo(-11, 0);

@@ -106,22 +106,16 @@ function playFloor(game, player, maxSeconds = 900) {
     }
 
     // --- Door travel ------------------------------------------------------
-    if (rt.cleared || rt.type === 'start') {
-      const node = game.run.currentNode();
-      if (node && node.next.length > 0) {
-        let inDoorway = false;
-        for (const door of rt.room.doors) {
-          if (!door.open) continue;
-          const cx = door.rect.x + door.rect.w / 2;
-          const cy = door.rect.y + door.rect.h / 2;
-          if (Math.hypot(player.x - cx, player.y - cy) < 34) { inDoorway = true; break; }
-        }
-        if (!inDoorway) doorArmed = true;
-        else if (doorArmed) {
-          doorArmed = false;
-          game.travelTo(node.next[0]);
-          continue;
-        }
+    // Mirrors main.js: a doorway that leads somewhere is enough to leave, so
+    // a support room no longer has to be consumed before the bot moves on.
+    const enteredDoor = game.doorAtPlayer(34);
+    const node = game.run.currentNode();
+    if (node && node.next.length > 0) {
+      if (!enteredDoor) doorArmed = true;
+      else if (doorArmed) {
+        doorArmed = false;
+        game.travelTo(Number(enteredDoor.targetRoomId));
+        continue;
       }
     }
 

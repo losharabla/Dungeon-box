@@ -9,7 +9,7 @@ the repository is the original music track in `assets/music/`.
 **3 classes · 10 enemies · 3 bosses · 9 ultimates · 13 weapons · 4 room types · one run of choices**
 
 [![tests](https://github.com/losharabla/Dungeon-box/actions/workflows/ci.yml/badge.svg)](https://github.com/losharabla/Dungeon-box/actions/workflows/ci.yml)
-[![headless checks](https://img.shields.io/badge/headless%20checks-140%20in%20the%20fast%20gate-success.svg)](#tests)
+[![headless checks](https://img.shields.io/badge/headless%20checks-156%20in%20the%20fast%20gate-success.svg)](#tests)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen.svg)](package.json)
 [![node](https://img.shields.io/badge/node-%E2%89%A518-informational.svg)](package.json)
@@ -70,9 +70,9 @@ is in **[`INSTALL.md`](INSTALL.md)**.
 | Right mouse button | A staff's beam — held until the heat gauge fills, then locked out until it cools |
 | `Space` | Dash — a short burst of speed in the movement direction |
 | `Q` | Ultimate (once charged to 100%) |
-| `E` | Interact — shop, healing altar, doors |
-| `ESC` | Pause |
-| Walking into an open door | Travel to the room that door leads to |
+| `E` | Interact — open the shop, take the altar's blessing (doors are walked through, not opened) |
+| `ESC` | Pause — and back out of a shop or altar screen |
+| Walking into an open doorway | Travel to the room it leads to. A shop or an altar never has to be used first, and the shop stays open for business as long as you are in the room |
 
 ---
 
@@ -84,8 +84,8 @@ is in **[`INSTALL.md`](INSTALL.md)**.
 - [SOLID mapping](#solid-mapping) — how each principle is realised, with the file that shows it
 - [Content](#content-mvp-scope-32) — what ships, and the rules the art follows
 - [Procedural audio](#procedural-audio) · [Music](#music) — synthesis, voice budget, streaming
-- [Tests](#tests) — 140+ headless checks and what each suite is for
-- [Bugs found by these tests and fixed](#bugs-found-by-these-tests-and-fixed) — 25 of them, with measurements
+- [Tests](#tests) — 150+ headless checks and what each suite is for
+- [Bugs found by these tests and fixed](#bugs-found-by-these-tests-and-fixed) — 28 of them, with measurements
 - [Combat additions beyond the design document](#combat-additions-beyond-the-design-document)
 - [Melee balance pass](#melee-balance-pass) — what "the warrior is too hard" measured as
 - [Deliberate scope choices](#deliberate-scope-choices) · [Extending the game](#extending-the-game)
@@ -250,7 +250,8 @@ imports a global `game` object; every system receives what it needs through its 
 │   │   └── musicTracks.js      Track table + its measured properties (data)
 │   │
 │   └── ui/
-│       └── UIManager.js    Every DOM element outside the canvas
+│       ├── UIManager.js    Every DOM element outside the canvas
+│       └── statDisplay.js  Player/weapon numbers → the HUD and card strings
 │
 ├── assets/
 │   └── music/              The only binary asset in the project
@@ -533,18 +534,18 @@ Everything below was measured on this machine, not estimated:
   overdraw, boss room 8.2x, and no radial or linear gradients in a steady frame.
 
 ```
-  48/48 unit + regression checks passed
- 12/12 DOM and boot checks passed — including the boss → victory → next-floor UI path
- 8/8  HUD alignment checks passed
+  52/52 unit + regression checks passed
+ 15/15 DOM and boot checks passed — including the boss → victory → next-floor UI path
+ 9/9  HUD alignment checks passed
  6/6  camera framing checks passed
-13/13 graphics checks passed
+15/15 graphics checks passed
  18/18 balance checks passed
  23/23 audio checks passed — voice ceiling, retrigger guard, culling, node pools, music
  13/13 drawn silhouettes covered by their hit box
   7/7  survivability checks passed (late arena, 3 classes, mercy window on/off)
  6/6  swept parry regression checks passed
  4/4  input letterbox regression checks passed
- 2/2  real HUD cache checks passed
+ 8/8  real HUD cache checks passed
  6/6  soak checks passed (8 floors, 48 rooms, 8 boss fights)
  12/12 arenas cleared (typical 12-17s; the bot occasionally stalls on navigation
  — slowest-clear outliers are bot variance, not room design)
@@ -775,9 +776,45 @@ Each of these is now covered by a named regression test:
     what the field always claimed, and the regression test fails with 40 damage where it
     expects 20 if the old line is restored.
 
+26. **Vampiric Edge did nothing on a staff's beam, or on burning.** Lifesteal lived inside
+    `_reportDamage`, which only `applyHit` reaches — melee swings and projectiles. The two
+    damage paths that never go through it healed nothing at all: the held beam slices damage
+    per frame through `applyDamageOverTime`, and a burn tick is applied straight from the
+    status. For a mage the upgrade therefore read as broken in exactly the mode the staff
+    rework had just made its headline: bolts healed, beaming did not. Both paths now share one
+    `_drainLifeSteal(source, amount)` helper, a burn remembers who lit it, and the returned
+    number is pooled so a held beam prints one `+n` per feedback window instead of sixty a
+    second — or, for a weak trickle, a column of `+0`. The same pass made the stacking
+    question answerable: the offer card now reads `Life steal 5% → 10%`, and the HUD chip
+    shows the running total.
+27. **The exit arrows pointed the wrong way, and covered the door's own label.** Every marker
+    was a downward triangle at `door.cy - 34`. Only a south door was told the truth: on a
+    **north** door that position lands squarely on the plate naming the destination (the plate
+    spans `cy-35.5 … cy-16.5`), so arrow and text drew over each other, and east/west doors
+    pointed south. The markers were also missing in the entrance — the one room where the
+    player has to pick one of three doors — because the gate was `runtime.cleared`, which is
+    false there. Each marker is now rotated along its own doorway's outward normal and anchored
+    72px *inside* the room, opposite the plate; the gate is per door (open, and leading
+    somewhere), so the entrance and the support rooms get markers while a sealed arena gets
+    none. `graphics-test.mjs` checks that every chevron's tip closes the distance to its own
+    doorway and that a sealed room advertises nothing.
+28. **A shop could only be left by using it, and could only be used once.** `getInteraction()`
+    returned `null` anywhere in a shop or altar room except within 120px of the centre, and the
+    walk-through gate required `cleared` — so the only way out of a merchant's room was to press
+    `E` at the stall. The moment it was pressed the room was marked consumed, the
+    `!rt.cleared` check stopped matching, and the stall that still held its stock became
+    unusable: gold in hand, nothing to spend it on. Both rooms are now leaveable through any
+    open doorway without touching them, the shop keeps answering `E` for as long as the player
+    is in the room (same stock array, `sold` flags intact), and `ESC` backs out of a shop or
+    altar screen instead of stacking the pause menu on top of it. The altar stays a one-time
+    gift, so walking out without claiming it forfeits it. The door rule itself moved into
+    `Game.doorAtPlayer()`, which the prompt, the auto-travel step and both simulator bots now
+    ask, so they can no longer disagree about which opening the player is standing in; a sealed
+    arena still reports nothing, and a regression test asserts exactly that.
+
 ### Combat additions beyond the design document
 
-Five deliberate departures, all driven by play feedback rather than preference. Each is
+Six deliberate departures, all driven by play feedback rather than preference. Each is
 confined to one system so it can be reverted in isolation.
 
 1. **Melee parry.** The document gives ranged enemies (§3, §6) and their projectiles no
@@ -832,6 +869,20 @@ confined to one system so it can be reverted in isolation.
    The four staffs also got their own silhouettes — a brazier, a shard cluster, a forked rod
    and a shard in a counter-rotating halo — and each head opens and lights up while the beam
    is live, so the firing mode is readable from the character rather than only from the HUD.
+6. **The HUD states the numbers.** §31 draws a deliberately minimal HUD — HP, gold, the
+   weapon's name — but a run's power is a stack of invisible multipliers, and three reported
+   problems came from exactly that: the weapon's real damage was unknowable, the run's stacked
+   stats were invisible, and "does Vampiric Edge add to the one I already have?" had no answer
+   anywhere on screen. The bottom-left block now carries the weapon's damage (per pellet on a
+   shotgun), its cadence, a paper dps, its kind and its traits (`burn 6/s`, `beam 30/s`,
+   `pierce all`, `+14 hp/kill`), and under it one chip per stacked modifier — `DMG`, `ATK`,
+   `SPD`, `CRIT`, `LEECH`, `ARMOR` — dim at their baseline and green once the run has moved
+   them. Every shop and reward card adds the line the numbers could not say for themselves:
+   `Life steal 5% → 10%`, `Max HP 150 → 165`, or the offered weapon's own stat line. The dps
+   figure is deliberately unramped (the Hellstorm's heat and the lightning staff's beam ramp
+   are transient, so folding them in would make it flicker and defeat the HUD's change-cache),
+   and the whole block is rebuilt only when one of the values it prints moves — measured by
+   `ui-cache-regression.mjs`.
 
 ### Melee balance pass
 

@@ -23,6 +23,8 @@ const { SceneRenderer } = await import('../src/rendering/SceneRenderer.js');
 const { ParticleSystem } = await import('../src/rendering/particleSystem.js');
 const { brickPattern, hexAlpha } = await import('../src/rendering/drawUtils.js');
 const { drawPlayerWeapon, drawMeleeSlash } = await import('../src/rendering/weaponRenderer.js');
+const { drawExitMarkers } = await import('../src/rendering/effectsRenderer.js');
+const { roomTypeColor } = await import('../src/data/roomTypes.js');
 
 /* ============================================================
    Recording 2D context
@@ -543,6 +545,105 @@ check('the four player melee weapons have distinct readable silhouettes', () => 
       .join('|');
   });
   assert.equal(new Set(signatures).size, models.length, 'melee weapon models must not share one silhouette');
+});
+
+/**
+ * A room whose four sides each carry an open door, plus the two cases that
+ * must never be marked: a doorway with nothing beyond it, and a sealed one.
+ *
+ * Drawn against an identity transform, so a recorded `tx`/`ty` is a world
+ * coordinate and the marker can be checked against its own doorway directly.
+ * @returns {any}
+ */
+function markerRoom() {
+  return {
+    type: 'start',
+    center: { x: 300, y: 200 },
+    bounds: { x: 0, y: 0, w: 600, h: 400 },
+    doors: [
+      { side: 'north', rect: { x: 252, y: -18, w: 96, h: 18 }, open: true, targetRoomId: '1', targetType: 'arena', elite: false },
+      { side: 'south', rect: { x: 252, y: 400, w: 96, h: 18 }, open: true, targetRoomId: '2', targetType: 'shop', elite: false },
+      { side: 'east', rect: { x: 600, y: 152, w: 18, h: 96 }, open: true, targetRoomId: '3', targetType: 'healing', elite: false },
+      { side: 'west', rect: { x: -18, y: 152, w: 18, h: 96 }, open: true, targetRoomId: '4', targetType: 'boss', elite: true },
+      { side: 'north', rect: { x: 402, y: -18, w: 96, h: 18 }, open: true, targetRoomId: null, targetType: null, elite: false },
+      { side: 'south', rect: { x: 402, y: 400, w: 96, h: 18 }, open: false, targetRoomId: '6', targetType: 'arena', elite: false },
+    ],
+  };
+}
+
+check('REGRESSION: exit markers point out through their own doorway', () => {
+  // Reported problem: every marker was a downward triangle at `door.cy - 34`.
+  // Only a south door was told the truth, and on a north door the arrow landed
+  // squarely on the plate naming the destination, so the two covered each
+  // other. Markers were also missing in the entrance, where the choice is made.
+  const ctx = makeRecordingContext();
+  const room = markerRoom();
+  drawExitMarkers(/** @type {any} */ (ctx), room, 0);
+
+  const chevrons = ctx.ops.filter(
+    (op) => op.op === 'fill' && String(op.fill).startsWith('rgba('),
+  );
+  assert.equal(chevrons.length, 4, 'exactly the four open doors with a destination are marked');
+
+  for (const door of room.doors) {
+    if (!door.open || door.targetRoomId == null) continue;
+    const colour = hexAlpha(roomTypeColor(door.targetType, { elite: door.elite === true }), 0.9);
+    const marker = chevrons.find((op) => op.fill === colour);
+    assert.ok(marker, `the ${door.side} door (${door.targetType}) must be marked`);
+
+    const cx = door.rect.x + door.rect.w / 2;
+    const cy = door.rect.y + door.rect.h / 2;
+    const nx = cx - room.center.x;
+    const ny = cy - room.center.y;
+    const len = Math.hypot(nx, ny);
+    const outward = { x: nx / len, y: ny / len };
+
+    // The anchor sits on the room side of the opening, where the plate is not.
+    const offset = (marker.tx - cx) * outward.x + (marker.ty - cy) * outward.y;
+    assert.ok(offset < -40, `${door.side}: the marker must sit inside the room (${offset.toFixed(1)}px)`);
+
+    // The chevron's tip (local (0, 13), rotated into the world) must point at
+    // the doorway: following it has to close the distance, not open it.
+    const tipX = marker.tx - Math.sin(marker.rot) * 13;
+    const tipY = marker.ty + Math.cos(marker.rot) * 13;
+    const toDoor = (x, y) => Math.hypot(x - cx, y - cy);
+    assert.ok(
+      toDoor(tipX, tipY) < toDoor(marker.tx, marker.ty),
+      `${door.side}: the chevron must point through its own doorway`,
+    );
+  }
+});
+
+check('exit markers show in the entrance, and never in a sealed room', () => {
+  // The entrance is where the player picks one of three doors, and it is not
+  // "cleared" — the old gate hid every marker there. A sealed room is the
+  // opposite case: its doors are shut, so nothing may advertise a way out.
+  const game = newGame();
+  game.startRun('warrior', 'whirlwind', 1);
+  const rt = game.rooms.runtime;
+  const ops = renderFrame(game);
+
+  const expected = rt.room.doors.filter((door) => door.open && door.targetRoomId != null);
+  assert.ok(expected.length > 0, 'the entrance must offer doors');
+  for (const door of expected) {
+    const colour = hexAlpha(roomTypeColor(door.targetType, { elite: door.elite === true }), 0.9);
+    assert.ok(
+      ops.some((op) => op.op === 'fill' && op.fill === colour),
+      `the entrance must mark the door to the ${door.targetType}`,
+    );
+  }
+
+  const sealed = newGame();
+  sealed.startRun('warrior', 'whirlwind', 1);
+  sealed.rooms.runtime.room.seal();
+  const sealedOps = renderFrame(sealed);
+  for (const door of sealed.rooms.runtime.room.doors) {
+    const colour = hexAlpha(roomTypeColor(door.targetType, { elite: door.elite === true }), 0.9);
+    assert.ok(
+      !sealedOps.some((op) => op.op === 'fill' && op.fill === colour),
+      'a sealed room must not advertise an exit',
+    );
+  }
 });
 
 /* ---------- Report ---------------------------------------------------- */

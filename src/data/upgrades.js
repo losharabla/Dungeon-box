@@ -7,6 +7,28 @@
  */
 
 /**
+ * The effect of an upgrade on one player stat.
+ *
+ * `apply` remains the single source of truth for *what happens*; this
+ * descriptor only has to describe it, and it exists so the interface can say
+ * what the player's total becomes (`Life steal 5% → 10%`) instead of only
+ * what the upgrade adds. Without it, a second pick of an upgrade the player
+ * already owns reads exactly like the first one, which is the difference
+ * between "it stacks" and "it did nothing".
+ *
+ * `key` names a `Player.modifiers` field, except for the `hp` format, where
+ * the printed value is `maxHp` itself: `add` is then the flat amount, or
+ * `fraction` of `fractionOf` when the amount depends on the player's total.
+ *
+ * @typedef {object} UpgradeStat
+ * @property {string} key            a `Player.modifiers` key, or 'maxHp'
+ * @property {number} [add]          flat amount added
+ * @property {string} [fractionOf]   stat the fraction is taken from
+ * @property {number} [fraction]     share of that stat
+ * @property {'mul'|'pct'|'flat'|'hp'} format how the value is printed
+ */
+
+/**
  * @typedef {object} UpgradeDef
  * @property {string} id
  * @property {string} name
@@ -14,6 +36,7 @@
  * @property {number} price        gold cost in the shop (0 = not sold)
  * @property {'shop'|'reward'|'both'} source
  * @property {'common'|'rare'} rarity
+ * @property {UpgradeStat} stat    how the effect is shown before it is taken
  * @property {(player: any) => void} apply
  */
 
@@ -26,6 +49,7 @@ export const UPGRADES = {
     price: 80,
     source: 'both',
     rarity: 'common',
+    stat: { key: 'damageMul', add: 0.10, format: 'mul' },
     apply: (p) => { p.modifiers.damageMul += 0.10; },
   },
 
@@ -36,6 +60,7 @@ export const UPGRADES = {
     price: 70,
     source: 'both',
     rarity: 'common',
+    stat: { key: 'maxHpBonus', add: 20, format: 'hp' },
     apply: (p) => { p.modifiers.maxHpBonus += 20; p.increaseMaxHp(20, true); },
   },
 
@@ -46,6 +71,7 @@ export const UPGRADES = {
     price: 80,
     source: 'both',
     rarity: 'common',
+    stat: { key: 'speedMul', add: 0.15, format: 'mul' },
     apply: (p) => { p.modifiers.speedMul += 0.15; },
   },
 
@@ -56,6 +82,7 @@ export const UPGRADES = {
     price: 90,
     source: 'both',
     rarity: 'common',
+    stat: { key: 'critChance', add: 0.10, format: 'pct' },
     apply: (p) => { p.modifiers.critChance += 0.10; },
   },
 
@@ -66,6 +93,7 @@ export const UPGRADES = {
     price: 95,
     source: 'both',
     rarity: 'common',
+    stat: { key: 'attackSpeedMul', add: 0.20, format: 'mul' },
     apply: (p) => { p.modifiers.attackSpeedMul += 0.20; },
   },
 
@@ -77,6 +105,7 @@ export const UPGRADES = {
     price: 0,
     source: 'reward',
     rarity: 'common',
+    stat: { key: 'maxHpBonus', fractionOf: 'maxHp', fraction: 0.10, format: 'hp' },
     apply: (p) => {
       const amount = Math.round(p.maxHp * 0.10);
       p.modifiers.maxHpBonus += amount;
@@ -91,6 +120,7 @@ export const UPGRADES = {
     price: 0,
     source: 'reward',
     rarity: 'common',
+    stat: { key: 'damageMul', add: 0.10, format: 'mul' },
     apply: (p) => { p.modifiers.damageMul += 0.10; },
   },
 
@@ -101,6 +131,7 @@ export const UPGRADES = {
     price: 0,
     source: 'reward',
     rarity: 'common',
+    stat: { key: 'speedMul', add: 0.10, format: 'mul' },
     apply: (p) => { p.modifiers.speedMul += 0.10; },
   },
 
@@ -109,10 +140,11 @@ export const UPGRADES = {
   life_steal: {
     id: 'life_steal',
     name: 'Vampiric Edge',
-    desc: '5% of the damage you deal is returned as health.',
+    desc: '5% of the damage you deal is returned as health. Stacks with any Vampiric Edge already taken.',
     price: 140,
     source: 'both',
     rarity: 'rare',
+    stat: { key: 'lifeSteal', add: 0.05, format: 'pct' },
     apply: (p) => { p.modifiers.lifeSteal += 0.05; },
   },
 
@@ -123,6 +155,7 @@ export const UPGRADES = {
     price: 130,
     source: 'both',
     rarity: 'rare',
+    stat: { key: 'armor', add: 3, format: 'flat' },
     apply: (p) => { p.modifiers.armor += 3; },
   },
 
@@ -133,6 +166,7 @@ export const UPGRADES = {
     price: 170,
     source: 'both',
     rarity: 'rare',
+    stat: { key: 'damageMul', add: 0.25, format: 'mul' },
     apply: (p) => { p.modifiers.damageMul += 0.25; },
   },
 
@@ -143,6 +177,7 @@ export const UPGRADES = {
     price: 175,
     source: 'both',
     rarity: 'rare',
+    stat: { key: 'attackSpeedMul', add: 0.35, format: 'mul' },
     apply: (p) => { p.modifiers.attackSpeedMul += 0.35; },
   },
 };

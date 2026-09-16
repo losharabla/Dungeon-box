@@ -149,7 +149,7 @@ export class BeamSystem {
       player.beam.tickTimer = 1 / CONFIG.beam.tickRate;
       const spec = { ...w, ...beam };
       for (const t of targets) {
-        this.combat.applyStatus(t.enemy, spec);
+        this.combat.applyStatus(t.enemy, spec, player);
       }
       const impact = targets.length > 0 ? targets[0] : null;
       if (impact) {

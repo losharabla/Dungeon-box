@@ -476,6 +476,15 @@ html, body {
   margin-top: auto;
 }
 
+/* The loadout column: weapon first, then the run's stacked modifiers. It
+   stays in the bottom flow (never absolute), like every other HUD row. */
+.hud-build {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 470px;
+}
+
 .hud-weapon-name {
   font-size: 20px;
   font-weight: 700;
@@ -485,6 +494,49 @@ html, body {
 .hud-weapon-name.legendary {
   color: var(--gold);
   text-shadow: 0 0 18px rgba(232, 185, 85, .65);
+}
+
+/* Damage / cadence / dps / traits, as one dim line under the name. */
+.hud-weapon-stats {
+  margin-top: 3px;
+  font-size: 11px;
+  letter-spacing: .5px;
+  color: var(--ink-dim);
+}
+
+.hud-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.stat-chip {
+  padding: 3px 7px;
+  background: rgba(10, 10, 18, .72);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--ink-dim);
+}
+.stat-chip .v {
+  margin-left: 5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+/* A value the run has actually moved off its baseline. */
+.stat-chip.boosted {
+  border-color: #3f6b52;
+}
+.stat-chip.boosted .v {
+  color: #7fe0a8;
+}
+
+/* "Life steal 5% → 10%": what an offer does to the player's totals. */
+.si-delta {
+  margin-top: 4px;
+  font-size: 11px;
+  letter-spacing: .5px;
+  color: var(--gold);
 }
 
 .hud-ult { width: 300px; }

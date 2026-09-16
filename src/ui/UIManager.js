@@ -12,7 +12,9 @@
 
 import { CLASS_IDS, getClass } from '../data/classes.js';
 import { ultimatesForClass, getUltimate } from '../data/ultimates.js';
-import { getUpgrade } from '../data/upgrades.js';
+import { UPGRADES, getUpgrade } from '../data/upgrades.js';
+import { WEAPONS } from '../data/weapons.js';
+import { STAT_CHIPS, characterStatChips, upgradeDeltaLine, weaponStatLine } from './statDisplay.js';
 import { drawMage, drawGunner, drawWarrior } from '../rendering/characterRenderer.js';
 import { fmtInt, percent } from '../core/MathUtils.js';
 import { CONFIG } from '../core/Config.js';
@@ -67,6 +69,8 @@ export class UIManager {
       goldText: must('hud-gold-text'),
       rooms: must('hud-rooms'),
       weaponName: must('hud-weapon-name'),
+      weaponStats: must('hud-weapon-stats'),
+      hudStats: must('hud-stats'),
       dashFill: must('hud-dash-fill'),
       beam: must('hud-beam'),
       beamName: must('hud-beam-name'),
@@ -108,7 +112,7 @@ export class UIManager {
     /** Cached values so the HUD only touches the DOM when something changed. */
     this._cache = {
       hp: -1, maxHp: -1, gold: -1, ult: -1, dash: -1, weapon: '', hint: '', ultLabel: '',
-      rooms: '', bossHp: -1,
+      rooms: '', bossHp: -1, weaponStats: '', stats: '',
     };
 
     this._transitionTimer = 0;
@@ -233,6 +237,29 @@ export class UIManager {
       c.weapon = weaponName;
       this.el.weaponName.textContent = weaponName;
       this.el.weaponName.classList.toggle('legendary', player.weapon.legendary === true);
+    }
+
+    // Weapon stats. The line depends only on the weapon and the two permanent
+    // modifiers it prints — never on a transient like the heat ramp — so the
+    // signature keeps the DOM write off every frame where nothing moved.
+    const weaponSignature = `${player.weaponId}|${player.modifiers.damageMul}|${player.modifiers.attackSpeedMul}`;
+    if (weaponSignature !== c.weaponStats) {
+      c.weaponStats = weaponSignature;
+      this.el.weaponStats.textContent = weaponStatLine(player.weapon, player);
+    }
+
+    // Character stats: every modifier this run has stacked, with the totals
+    // the player actually fights with. Six chips rebuilt as one string, and
+    // only when one of the six values moves.
+    const statSignature = STAT_CHIPS
+      .map((row) => player.modifiers[row.key] ?? row.base)
+      .join('|');
+    if (statSignature !== c.stats) {
+      c.stats = statSignature;
+      this.el.hudStats.innerHTML = characterStatChips(player)
+        .map((chip) => `<span class="stat-chip${chip.boosted ? ' boosted' : ''}">`
+          + `${chip.label}<span class="v">${chip.text}</span></span>`)
+        .join('');
     }
 
     // Beam heat. Only magic weapons have one, so the whole block comes and
@@ -584,6 +611,14 @@ export class UIManager {
       desc.textContent = item.desc;
       card.appendChild(desc);
 
+      const delta = this._offerDelta(item, player);
+      if (delta) {
+        const line = document.createElement('div');
+        line.className = 'si-delta';
+        line.textContent = delta;
+        card.appendChild(line);
+      }
+
       const buy = document.createElement('button');
       buy.className = 'si-buy';
       buy.textContent = item.sold ? 'Sold' : `${item.price} gold`;
@@ -605,6 +640,31 @@ export class UIManager {
    */
   refreshShop(stock, player) {
     this.openShop(stock, player);
+  }
+
+  /**
+   * The "what this does to your totals" line for an offer, or ''.
+   *
+   * An upgrade describes its effect through its own `stat` descriptor, which
+   * is what turns "5% of the damage you deal is returned as health" into
+   * "Life steal 5% → 10%" for a player who already owns one. A weapon offer
+   * is worth comparing against what is in hand, so it gets the same line.
+   * Gold and potions have nothing to compare.
+   * @param {any} item a LootEntry
+   * @param {import('../entities/Player.js').Player} player
+   * @returns {string}
+   */
+  _offerDelta(item, player) {
+    if (!item || !player) return '';
+    if (item.kind === 'upgrade') {
+      const def = UPGRADES[item.id];
+      return def ? upgradeDeltaLine(def, player) ?? '' : '';
+    }
+    if (item.kind === 'weapon') {
+      const def = WEAPONS[item.id];
+      return def ? weaponStatLine(def, player) : '';
+    }
+    return '';
   }
 
   /**
@@ -645,6 +705,14 @@ export class UIManager {
       desc.className = 'si-desc';
       desc.textContent = choice.desc;
       card.appendChild(desc);
+
+      const delta = this._offerDelta(choice, player);
+      if (delta) {
+        const line = document.createElement('div');
+        line.className = 'si-delta';
+        line.textContent = delta;
+        card.appendChild(line);
+      }
 
       const take = document.createElement('button');
       take.className = 'si-buy';

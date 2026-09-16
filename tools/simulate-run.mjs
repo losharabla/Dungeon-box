@@ -376,23 +376,17 @@ function simulateRun({ classId, ultimateId, maxSeconds, seed, godMode = false })
 
     // --- Think and step -------------------------------------------------
     // Drive the door-travel logic the same way main.js does, including the
-    // re-arm hysteresis so arriving in a room does not chain-teleport.
-    if ((rt.cleared || rt.type === 'start')) {
-      const node = game.run.currentNode();
-      if (node && node.next.length > 0) {
-        let inDoorway = false;
-        for (const door of rt.room.doors) {
-          if (!door.open) continue;
-          const cx = door.rect.x + door.rect.w / 2;
-          const cy = door.rect.y + door.rect.h / 2;
-          if (Math.hypot(player.x - cx, player.y - cy) < 34) { inDoorway = true; break; }
-        }
-        if (!inDoorway) doorArmed = true;
-        else if (doorArmed) {
-          doorArmed = false;
-          game.travelTo(node.next[0]);
-          continue;
-        }
+    // re-arm hysteresis so arriving in a room does not chain-teleport. The
+    // doorway query is the game's own, so the bot leaves exactly the rooms a
+    // player can leave: a support room no longer has to be consumed first.
+    const enteredDoor = game.doorAtPlayer(34);
+    const node = game.run.currentNode();
+    if (node && node.next.length > 0) {
+      if (!enteredDoor) doorArmed = true;
+      else if (doorArmed) {
+        doorArmed = false;
+        game.travelTo(Number(enteredDoor.targetRoomId));
+        continue;
       }
     }
 
