@@ -1,6 +1,6 @@
 {
   "name": "roguelike-prototype",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "private": true,
   "description": "2D roguelike prototype on HTML5 Canvas + vanilla ES modules, with no build step and no external assets.",
   "type": "module",
