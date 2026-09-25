@@ -10,10 +10,11 @@
 import { Enemy } from '../entities/Enemy.js';
 import {
   drawAssassin, drawBat, drawBerserker, drawEnemyMage, drawGoblin,
-  drawNecromancer, drawShieldbearer, drawSkeleton, drawSlime, drawOrc,
+  drawNecromancer, drawPyromancer, drawShieldbearer, drawSkeleton, drawSlime, drawOrc,
 } from './characterRenderer.js';
 import { drawBoss } from './bossRenderer.js';
 import { drawPlayer } from './playerRenderer.js';
+import { glow, hexAlpha, mix, shadow } from './drawUtils.js';
 
 /**
  * @typedef {(ctx: CanvasRenderingContext2D, entity: any, time: number, moveAmount: number) => void} EntityDrawFn
@@ -27,6 +28,7 @@ const ENEMY_RENDERERS = {
   orc: drawOrc,
   bat: drawBat,
   enemy_mage: drawEnemyMage,
+  pyromancer: drawPyromancer,
   shieldbearer: drawShieldbearer,
   assassin: drawAssassin,
   berserker: drawBerserker,
@@ -192,6 +194,93 @@ export function drawEnemies(ctx, registry, time, render) {
  */
 export function registerEnemyRenderer(kind, fn) {
   ENEMY_RENDERERS[kind] = fn;
+}
+
+/**
+ * Procedural explosive barrel.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {import('../entities/Barrel.js').Barrel} barrel
+ * @param {number} time
+ * @param {import('./RenderSystem.js').RenderSystem} render
+ */
+export function drawBarrel(ctx, barrel, time, render) {
+  if (!render.isVisible(barrel.x, barrel.y, barrel.radius + 30)) return;
+
+  const hurt = barrel.hurtFlash > 0 ? 0.6 : 0;
+  const wood = hurt > 0 ? mix('#734722', '#ffffff', hurt) : '#734722';
+  const iron = hurt > 0 ? mix('#444852', '#ffffff', hurt) : '#444852';
+
+  // Ground shadow
+  shadow(ctx, barrel.x, barrel.y + 6, barrel.radius * 0.9, 0.7);
+
+  ctx.save();
+  ctx.translate(barrel.x, barrel.y);
+
+  const w = 24;
+  const h = 26;
+  const hw = w / 2;
+
+  // Barrel wooden staves body
+  ctx.fillStyle = wood;
+  ctx.beginPath();
+  ctx.moveTo(-hw + 2, -h);
+  ctx.quadraticCurveTo(-hw - 3, -h / 2, -hw + 2, 0);
+  ctx.lineTo(hw - 2, 0);
+  ctx.quadraticCurveTo(hw + 3, -h / 2, hw - 2, -h);
+  ctx.closePath();
+  ctx.fill();
+
+  // Dark stave lines
+  ctx.strokeStyle = '#432812';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-hw * 0.35, -h);
+  ctx.quadraticCurveTo(-hw * 0.45, -h / 2, -hw * 0.35, 0);
+  ctx.moveTo(hw * 0.35, -h);
+  ctx.quadraticCurveTo(hw * 0.45, -h / 2, hw * 0.35, 0);
+  ctx.stroke();
+
+  // Top & bottom iron hoops
+  ctx.fillStyle = iron;
+  ctx.fillRect(-hw - 1.5, -h + 4, w + 3, 3.5);
+  ctx.fillRect(-hw - 1.5, -7.5, w + 3, 3.5);
+
+  // Central explosive hazard mark
+  const heatPulse = 0.8 + Math.sin(time * 6 + barrel.x) * 0.2;
+  ctx.fillStyle = hexAlpha('#ff4d1a', 0.85 * heatPulse);
+  ctx.beginPath();
+  ctx.moveTo(0, -h / 2 - 4);
+  ctx.lineTo(4, -h / 2 + 2);
+  ctx.lineTo(-4, -h / 2 + 2);
+  ctx.closePath();
+  ctx.fill();
+  glow(ctx, 0, -h / 2, 10 * heatPulse, '#ff5a1a', 0.4);
+
+  // Subtle health bar if damaged
+  if (barrel.hp < barrel.maxHp && barrel.alive) {
+    const fraction = Math.max(0, barrel.hp / barrel.maxHp);
+    const barW = 22;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(-barW / 2 - 1, -h - 7, barW + 2, 4);
+    ctx.fillStyle = fraction > 0.4 ? '#ff9a3c' : '#ff3b30';
+    ctx.fillRect(-barW / 2, -h - 6, barW * fraction, 2);
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Draw all barrels in the world.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {import('../entities/Barrel.js').Barrel[]} barrels
+ * @param {number} time
+ * @param {import('./RenderSystem.js').RenderSystem} render
+ */
+export function drawBarrels(ctx, barrels, time, render) {
+  if (!barrels || barrels.length === 0) return;
+  for (const b of barrels) {
+    if (b.alive) drawBarrel(ctx, b, time, render);
+  }
 }
 
 export { drawPlayer };

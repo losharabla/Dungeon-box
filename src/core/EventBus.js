@@ -161,6 +161,7 @@ export const EVENTS = {
   SHAKE_REQUESTED: 'fx:shake',
   FLOATING_TEXT: 'fx:floatingText',
   HIT_STOP: 'fx:hitStop',
+  HAZARD_SPAWNED: 'fx:hazardSpawned',
   NOTICE: 'ui:notice',
 
   // --- shop ---

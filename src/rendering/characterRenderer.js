@@ -648,6 +648,104 @@ export function drawEnemyMage(ctx, e, time) {
 }
 
 /**
+ * Pyromancer: dark burgundy/charcoal hooded cultist holding a burning molotov flask.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {any} e
+ * @param {number} time
+ */
+export function drawPyromancer(ctx, e, time) {
+  const hurt = e.hurtFlash > 0 ? 0.6 : 0;
+  const time2 = time + e.age;
+  const hover = Math.sin(time2 * 2.8) * 2.5;
+  const robe = hurt > 0 ? mix('#4a1d1d', '#ffffff', hurt) : '#4a1d1d';
+  const trim = hurt > 0 ? mix('#ff6a1a', '#ffffff', hurt) : '#ff6a1a';
+
+  shadow(ctx, e.x, e.y + e.radius * 0.9, e.radius * 0.8, 0.75);
+
+  ctx.save();
+  ctx.translate(e.x, e.y - hover);
+
+  // Scorched robe body
+  ctx.fillStyle = robe;
+  ctx.beginPath();
+  ctx.moveTo(-6, -22);
+  ctx.lineTo(6, -22);
+  ctx.lineTo(14, 6);
+  ctx.lineTo(10, 3);
+  ctx.lineTo(6, 7);
+  ctx.lineTo(0, 3);
+  ctx.lineTo(-6, 7);
+  ctx.lineTo(-10, 3);
+  ctx.lineTo(-14, 6);
+  ctx.closePath();
+  ctx.fill();
+
+  // Fiery hem border
+  ctx.fillStyle = trim;
+  ctx.beginPath();
+  ctx.moveTo(-14, 6);
+  ctx.lineTo(-10, 3);
+  ctx.lineTo(-6, 7);
+  ctx.lineTo(0, 3);
+  ctx.lineTo(6, 7);
+  ctx.lineTo(10, 3);
+  ctx.lineTo(14, 6);
+  ctx.lineTo(14, 7.5);
+  ctx.lineTo(-14, 7.5);
+  ctx.closePath();
+  ctx.fill();
+
+  // Hood
+  ctx.fillStyle = tint(robe, 0.75);
+  ctx.beginPath();
+  ctx.moveTo(-8, -20);
+  ctx.lineTo(0, -34);
+  ctx.lineTo(8, -20);
+  ctx.closePath();
+  ctx.fill();
+
+  // Dark face void
+  ctx.fillStyle = 'rgba(10,4,4,0.95)';
+  ctx.beginPath();
+  ctx.arc(0, -24, 4.6, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Glowing ember eyes
+  if (hurt <= 0) {
+    ctx.fillStyle = '#ffaa22';
+    ctx.beginPath();
+    ctx.arc(-1.8, -24.5, 1.4, 0, Math.PI * 2);
+    ctx.arc(1.8, -24.5, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Molotov flask in hand
+  const flaskX = Math.cos(e.facing) * 12 + 4;
+  const flaskY = -12 + Math.sin(e.facing) * 6;
+  ctx.fillStyle = '#9b3b1c';
+  ctx.beginPath();
+  ctx.arc(flaskX, flaskY, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#6b4226';
+  ctx.fillRect(flaskX - 1.5, flaskY - 6.5, 3, 3);
+
+  // Flickering fuse flame on the bottle
+  if (hurt <= 0) {
+    const flicker = Math.sin(time2 * 20) * 1.5;
+    ctx.fillStyle = '#ffd166';
+    ctx.beginPath();
+    ctx.moveTo(flaskX - 2, flaskY - 6.5);
+    ctx.lineTo(flaskX + flicker, flaskY - 11);
+    ctx.lineTo(flaskX + 2, flaskY - 6.5);
+    ctx.closePath();
+    ctx.fill();
+    glow(ctx, flaskX, flaskY - 7, 12, '#ff6a1a', 0.6);
+  }
+
+  ctx.restore();
+}
+
+/**
  * Shieldbearer: tower shield on the facing side, armoured body behind it.
  * The shield visibly dims and cracks as its stamina drains, so the player
  * can read when it is about to break (§11.7 counterplay).

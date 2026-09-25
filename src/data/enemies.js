@@ -65,7 +65,7 @@ export const ENEMIES = {
     maxHp: 34, speed: 1.5, damage: 8, radius: 15,
     hitWidth: 33, hitUp: 15, hitDown: 12,
     goldMin: 3, goldMax: 7, xpValue: 1,
-    attackCooldown: 0.9, attackRange: 26, attackType: 'melee',
+    attackCooldown: 0.9, attackRange: 36, attackType: 'melee',
     weight: 10,
     desc: 'Crawls slowly straight at the player. Low HP, weak blow.',
   },
@@ -184,6 +184,17 @@ export const ENEMIES = {
     summon: { id: 'skeleton', count: 2, cooldown: 6.5 },
     weight: 4, elite: true,
     desc: 'Weak itself, but it keeps summoning skeletons. Priority target.',
+  },
+
+  /* 11 — Pyromancer */
+  pyromancer: {
+    id: 'pyromancer', name: 'Pyromancer', ai: 'bomber',
+    maxHp: 38, speed: 2.1, damage: 12, radius: 14,
+    hitWidth: 42, hitUp: 37, hitDown: 9,
+    goldMin: 12, goldMax: 20, xpValue: 2,
+    attackCooldown: 2.4, attackRange: 380, attackType: 'ranged',
+    preferRange: 240, retreatSpeedMul: 0.6, weight: 6, elite: true,
+    desc: 'Throws molotov flasks that shatter into burning fire puddles.',
   },
 };
 

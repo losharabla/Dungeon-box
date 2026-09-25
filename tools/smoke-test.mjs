@@ -148,7 +148,7 @@ await check('data integrity: classes, weapons, enemies, bosses, ultimates', asyn
   assert.equal(CLASS_IDS.length, 3, '3 classes');
   assert.equal(normalWeaponIds().length, 10, '10 normal weapons');
   assert.equal(Object.values(WEAPONS).filter((w) => w.legendary).length, 3, '3 legendary weapons');
-  assert.equal(Object.keys(ENEMIES).length, 10, '10 enemy types');
+  assert.equal(Object.keys(ENEMIES).length, 11, '11 enemy types');
   assert.equal(Object.keys(BOSSES).length, 3, '3 bosses');
   assert.equal(Object.keys(ULTIMATES).length, 9, '9 ultimates');
   assert.equal(BOSS_ORDER.length, 3);

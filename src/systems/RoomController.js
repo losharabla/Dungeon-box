@@ -13,6 +13,7 @@ import { EVENTS } from '../core/EventBus.js';
 import { CONFIG } from '../core/Config.js';
 import { rng } from '../core/Random.js';
 import { Room } from '../entities/Room.js';
+import { Barrel } from '../entities/Barrel.js';
 import { getWeapon } from '../data/weapons.js';
 import { getUpgrade, REWARD_UPGRADE_IDS } from '../data/upgrades.js';
 
@@ -169,6 +170,7 @@ export class RoomController {
         room.seal();
         runtime.spawnTimer = runtime.waveDefs[0].delay;
         runtime.wavePending = true;
+        this._spawnBarrels(room);
         break;
       }
 
@@ -230,6 +232,24 @@ export class RoomController {
     }
 
     runtime.visited = true;
+  }
+
+  /**
+   * Spawn a few explosive barrels at tactical positions in an arena.
+   * Placed safely away from doors and the player's entry position.
+   * Uses independent coordinates so the global Spawner rng stream stays intact.
+   * @param {Room} room
+   */
+  _spawnBarrels(room) {
+    const b = room.bounds;
+    const cx = b.x + b.w / 2;
+    const cy = b.y + b.h / 2;
+    const dx = b.w * 0.32;
+    const dy = b.h * 0.30;
+    this.registry.addBarrel(new Barrel({ x: cx - dx, y: cy - dy }));
+    this.registry.addBarrel(new Barrel({ x: cx + dx, y: cy - dy }));
+    this.registry.addBarrel(new Barrel({ x: cx - dx, y: cy + dy }));
+    this.registry.addBarrel(new Barrel({ x: cx + dx, y: cy + dy }));
   }
 
   /**

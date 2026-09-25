@@ -6,7 +6,7 @@ image asset**. Every character, weapon, boss, wall and effect is drawn with Canv
 primitives, and every sound effect is synthesised with the Web Audio API. The one binary in
 the repository is the original music track in `assets/music/`.
 
-**3 classes · 10 enemies · 3 bosses · 9 ultimates · 13 weapons · 4 room types · one run of choices**
+**3 classes · 11 enemies · 3 bosses · 9 ultimates · 13 weapons · 4 room types · one run of choices**
 
 [![tests](https://github.com/losharabla/Dungeon-box/actions/workflows/ci.yml/badge.svg)](https://github.com/losharabla/Dungeon-box/actions/workflows/ci.yml)
 [![headless checks](https://img.shields.io/badge/headless%20checks-156%20in%20the%20fast%20gate-success.svg)](#tests)
@@ -388,7 +388,8 @@ Systems depend on abstractions they receive, never on modules they reach for:
 | Category | Delivered |
 | --- | --- |
 | Playable classes | 3 — Warrior, Mage, Gunner |
-| Normal enemies | 10 — Slime, Goblin, Skeleton, Orc, Bat, Mage, Shieldbearer, Assassin, Berserker, Necromancer |
+| Normal enemies | 11 — Slime, Goblin, Skeleton, Orc, Bat, Mage, Shieldbearer, Assassin, Berserker, Necromancer, Pyromancer |
+| Interactive arena hazards | Explosive Barrels (detonate with AoE damage, knockback, and lingering fire puddle) |
 | Bosses | 3 — Stone Golem, Fire Lord, Executioner (each with a phase-2 transition) |
 | Normal weapons | 10 |
 | Legendary weapons | 3 — Bloodthirster, Staff of the Void, Hellstorm |

@@ -34,6 +34,7 @@ export function drawProjectile(ctx, p, time) {
     case 'bullet': drawBullet(ctx, p); break;
     case 'enemy_orbs': drawEnemyOrb(ctx, p, time); break;
     case 'rock': drawRock(ctx, p, speed); break;
+    case 'molotov': drawMolotov(ctx, p, time); break;
     default: drawBullet(ctx, p); break;
   }
 
@@ -63,60 +64,66 @@ function drawSniper(ctx, p) {
   glow(ctx, 0, 0, 16, '#7fd8ff', 0.5);
 }
 
-/** @param {CanvasRenderingContext2D} ctx */
+/** Minimal flame tick, the fire head's mark in flight. */
 function drawFire(ctx, p, time) {
-  const flick = 0.85 + Math.sin(time * 22 + p.seed) * 0.15;
-  glow(ctx, 0, 0, p.radius * 3.4 * flick, '#ff6a1a', 0.7);
+  void time;
+  const r = p.radius;
+  glow(ctx, 0, 0, r * 3.2, '#ff6a1a', 0.65);
   ctx.fillStyle = '#ffd47a';
   ctx.beginPath();
-  ctx.arc(0, 0, p.radius * 0.8, 0, Math.PI * 2);
-  ctx.fill();
-  // Trailing flame tongue.
-  ctx.fillStyle = hexAlpha('#ff5a1a', 0.6);
-  ctx.beginPath();
-  ctx.moveTo(-p.radius, -p.radius * 0.7);
-  ctx.quadraticCurveTo(-p.radius * 3.6 * flick, 0, -p.radius, p.radius * 0.7);
+  ctx.moveTo(-r * 1.2, -r * 0.6);
+  ctx.lineTo(r * 1.4, 0);
+  ctx.lineTo(-r * 1.2, r * 0.6);
   ctx.closePath();
   ctx.fill();
 }
 
-/** @param {CanvasRenderingContext2D} ctx */
+/** Minimal diamond, the ice head's mark in flight. */
 function drawIce(ctx, p, time) {
-  glow(ctx, 0, 0, p.radius * 3, '#7fd8ff', 0.55);
+  void time;
+  const r = p.radius * 1.1;
+  glow(ctx, 0, 0, p.radius * 2.8, '#7fd8ff', 0.55);
   ctx.fillStyle = '#dff6ff';
   ctx.beginPath();
-  ctx.moveTo(p.radius * 1.5, 0);
-  ctx.lineTo(-p.radius * 0.5, -p.radius * 0.9);
-  ctx.lineTo(-p.radius * 0.1, 0);
-  ctx.lineTo(-p.radius * 0.5, p.radius * 0.9);
+  ctx.moveTo(r, 0);
+  ctx.lineTo(0, -r * 0.7);
+  ctx.lineTo(-r, 0);
+  ctx.lineTo(0, r * 0.7);
   ctx.closePath();
   ctx.fill();
-  ctx.strokeStyle = hexAlpha('#ffffff', 0.8);
-  ctx.lineWidth = 1;
-  ctx.stroke();
 }
 
-/** @param {CanvasRenderingContext2D} ctx */
+/** Minimal bolt, the lightning head's mark in flight. One fixed polygon, so
+ *  the shot no longer reseeds Math.random every frame to draw itself. */
 function drawLightningBolt(ctx, p, time) {
-  glow(ctx, 0, 0, p.radius * 3.6, '#ffe14d', 0.7);
-  ctx.strokeStyle = '#fff9c4';
-  ctx.lineWidth = 2.2;
-  jaggedLine(ctx, -p.radius * 2.6, 0, p.radius * 1.6, 0, 5, 2.6, Math.random);
-  ctx.stroke();
+  void time;
+  const r = p.radius;
+  glow(ctx, 0, 0, r * 3.4, '#ffe14d', 0.65);
+  ctx.fillStyle = '#fff9c4';
+  ctx.beginPath();
+  ctx.moveTo(r * 1.6, -r * 0.5);
+  ctx.lineTo(-r * 0.2, -r * 0.5);
+  ctx.lineTo(r * 0.2, 0);
+  ctx.lineTo(-r * 1.6, r * 0.5);
+  ctx.lineTo(r * 0.2, r * 0.5);
+  ctx.lineTo(-r * 0.2, 0);
+  ctx.closePath();
+  ctx.fill();
 }
 
-/** @param {CanvasRenderingContext2D} ctx */
+/** Minimal hole: dark core in a thin ring, the void head's mark in flight. */
 function drawVoid(ctx, p, time) {
-  glow(ctx, 0, 0, p.radius * 3.6, '#a03cff', 0.75);
-  // Dark core with an inverted halo reads as "hole in space".
+  void time;
+  const r = p.radius;
+  glow(ctx, 0, 0, r * 3.2, '#a03cff', 0.7);
   ctx.fillStyle = 'rgba(8,2,16,0.95)';
   ctx.beginPath();
-  ctx.arc(0, 0, p.radius * 0.95, 0, Math.PI * 2);
+  ctx.arc(0, 0, r * 0.8, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = hexAlpha('#c05cff', 0.9);
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 1.8;
   ctx.beginPath();
-  ctx.arc(0, 0, p.radius * 0.95, time * 4, time * 4 + Math.PI * 1.5);
+  ctx.arc(0, 0, r * 0.95, 0, Math.PI * 2);
   ctx.stroke();
 }
 
@@ -159,6 +166,42 @@ function drawRock(ctx, p, speed) {
   ctx.strokeStyle = 'rgba(30,26,22,0.9)';
   ctx.lineWidth = 1.4;
   ctx.stroke();
+}
+
+/** A tumbling molotov cocktail flask trailing flame. */
+function drawMolotov(ctx, p, time) {
+  const r = p.radius || 7;
+  glow(ctx, 0, 0, r * 2.8, '#ff5a1a', 0.65);
+
+  const rot = time * 14 + (p.seed ?? 0);
+  ctx.save();
+  ctx.rotate(rot);
+
+  // Glass flask body
+  ctx.fillStyle = 'rgba(235, 110, 20, 0.9)';
+  ctx.beginPath();
+  ctx.arc(0, 2, r * 0.75, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(255, 230, 180, 0.75)';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+
+  // Flask neck & cork
+  ctx.fillStyle = '#8b5a2b';
+  ctx.fillRect(-2, -r - 1, 4, r * 0.6);
+
+  // Burning rag / fuse flame
+  const flicker = Math.sin(time * 24 + (p.seed ?? 0)) * 1.5;
+  ctx.fillStyle = '#ffd166';
+  ctx.beginPath();
+  ctx.moveTo(-2.5, -r - 1);
+  ctx.lineTo(flicker, -r - 6.5);
+  ctx.lineTo(2.5, -r - 1);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
 }
 
 /**

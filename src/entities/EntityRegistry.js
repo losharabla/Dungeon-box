@@ -16,6 +16,8 @@ export class EntityRegistry {
   constructor() {
     /** @type {Entity[]} everything except the player and projectiles */
     this.enemies = [];
+    /** @type {import('./Barrel.js').Barrel[]} destructible explosive obstacles */
+    this.barrels = [];
     /** @type {Entity[]} enemy-owned projectiles live in ProjectileSystem */
     this.player = /** @type {Player|null} */ (null);
     /** @type {Entity[]} delayed area hazards (fire walls, meteor marks) */
@@ -39,6 +41,13 @@ export class EntityRegistry {
   }
 
   /**
+   * @param {import('./Barrel.js').Barrel} barrel
+   */
+  addBarrel(barrel) {
+    this.barrels.push(barrel);
+  }
+
+  /**
    * @param {Entity} hazard
    */
   addHazard(hazard) {
@@ -58,6 +67,7 @@ export class EntityRegistry {
    */
   reap() {
     this.enemies = this.enemies.filter((e) => !e.reapable);
+    this.barrels = this.barrels.filter((b) => !b.reapable);
     this.hazards = this.hazards.filter((h) => !h.reapable);
     this.pickups = this.pickups.filter((p) => !p.taken);
   }
@@ -65,6 +75,7 @@ export class EntityRegistry {
   /** Wipe everything — used when loading a new room. */
   clear() {
     this.enemies.length = 0;
+    this.barrels.length = 0;
     this.hazards.length = 0;
     this.pickups.length = 0;
   }

@@ -146,7 +146,14 @@ export class AISystem {
     const damage = enemy.getDamage();
     const p = this.ctx.projectiles;
 
-    if (enemy.typeId === 'enemy_mage') {
+    if (enemy.typeId === 'pyromancer') {
+      // Molotov cocktail that shatters and leaves a burning fire puddle.
+      p.fireEnemyProjectile(enemy, player.x, player.y, {
+        damage, speed: 320, visual: 'molotov', color: '#ff6a1a',
+        radius: 7, life: 2.2, explosionRadius: 48, spread: 0.05,
+        leavesHazard: true,
+      });
+    } else if (enemy.typeId === 'enemy_mage') {
       // AoE bolt that detonates on impact (§11.6).
       p.fireEnemyProjectile(enemy, player.x, player.y, {
         damage, speed: 300, visual: 'enemy_orbs', color: '#c05cff',

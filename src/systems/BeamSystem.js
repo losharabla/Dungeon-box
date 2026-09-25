@@ -200,7 +200,9 @@ export class BeamSystem {
    * @returns {Array<{enemy: any, t: number, x: number, y: number}>}
    */
   _targets(x0, y0, x1, y1, halfWidth, beam) {
-    const candidates = this.registry.enemiesNear(x0, y0, beam.range + 64);
+    const enemies = this.registry.enemiesNear(x0, y0, beam.range + 64);
+    const barrels = (this.registry.barrels ?? []).filter((b) => b.alive);
+    const candidates = [...enemies, ...barrels];
     const hits = [];
 
     for (const enemy of candidates) {

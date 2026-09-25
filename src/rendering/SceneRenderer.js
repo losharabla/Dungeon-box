@@ -7,7 +7,7 @@
  * to live.
  */
 
-import { drawEnemies, drawPlayer } from './entityRenderer.js';
+import { drawBarrels, drawEnemies, drawPlayer } from './entityRenderer.js';
 import { RoomRenderer } from './roomRenderer.js';
 import { RoomBaker, blit } from './roomBake.js';
 import { drawHazards, drawUltimateVisuals, drawExitMarkers, drawRoomInteractables, drawAtmosphere } from './effectsRenderer.js';
@@ -151,6 +151,7 @@ export class SceneRenderer {
     scene.particles.draw(ctx, this.render);
 
     // --- Actors ----------------------------------------------------------
+    drawBarrels(ctx, scene.registry.barrels, time, this.render);
     drawEnemies(ctx, scene.registry, time, this.render);
 
     const player = scene.registry.player;

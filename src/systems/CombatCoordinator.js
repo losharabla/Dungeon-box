@@ -107,9 +107,12 @@ export class CombatCoordinator {
     // The broad phase has to allow for the tallest body, not just the swing
     // radius: a target standing "above" the player is reachable at its head.
     const enemies = this.combat.registry.enemiesNear(player.x, player.y, range + 96);
+    const nearbyBarrels = (this.combat.registry.barrels ?? [])
+      .filter((b) => b.alive && (b.x - player.x) ** 2 + (b.y - player.y) ** 2 <= (range + 96) ** 2);
+    const targets = [...enemies, ...nearbyBarrels];
     let hits = 0;
 
-    for (const enemy of enemies) {
+    for (const enemy of targets) {
       // The swing is tested against the enemy's drawn body, which stands above
       // its ground point. Measuring to the feet is what made a sword pass
       // through an orc's chest: 70px of visible body, 18px of hit circle.

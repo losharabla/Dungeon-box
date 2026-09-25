@@ -6,7 +6,7 @@
  * cursor, and show recoil and muzzle flash for firearms.
  */
 
-import { glow, hexAlpha, polygonPath, jaggedLine } from './drawUtils.js';
+import { glow, hexAlpha, polygonPath } from './drawUtils.js';
 import { bladeAngle, swingPose } from './meleePose.js';
 
 /**
@@ -285,23 +285,16 @@ function drawGun(ctx, player, time, recoil) {
 }
 
 /**
- * The four staffs.
+ * The four staffs, remodelled minimal.
  *
- * Each staff is a different weapon, so each one is a different *silhouette*:
- * a brazier on a wooden shaft, a splintered crystal cluster, a forked rod, and
- * a shard hanging in a counter-rotating halo. The shaft and the sway are
- * shared — only the head changes — but the head is what the player actually
- * recognises across a dark room.
- *
- * Every head also has to say which of the two firing modes is live. `charge`
- * is the beam: at 0 the head is closed and idle, at 1 it is open and throwing
- * light, so a player watching their own character can tell bolts from beam
- * without reading the HUD.
+ * One shared flat shaft; identity lives in a single elemental mark per head —
+ * a flame tick, a diamond, a bolt, a ring — in the staff's own colour. The
+ * mark breathes with `charge` (the beam: 0 idle, 1 held) so bolts vs beam
+ * still read without the HUD, and every head keeps its glow: light is what
+ * carries a minimal shape across a dark room.
  *
  * @typedef {object} StaffHead
  * @property {string} color
- * @property {string} shaftTop
- * @property {string} shaftBottom
  * @property {(ctx: CanvasRenderingContext2D, time: number, charge: number, heat: number) => void} head
  */
 
@@ -309,125 +302,75 @@ function drawGun(ctx, player, time, recoil) {
 const STAFF_HEADS = {
   fire_staff: {
     color: '#ff7a2b',
-    shaftTop: '#6b5636',
-    shaftBottom: '#33291a',
     head(ctx, time, charge, heat) {
       const cx = 58;
-      // Brazier: a shallow bowl clamped to the tip.
-      ctx.fillStyle = '#3a2b1d';
+      // A tip of fire: a slender leaf with a sharp point, leaning gently.
+      const sway = Math.sin(time * 5) * 1.5;
+      const size = 12 + charge * 7;
+      ctx.fillStyle = charge > 0.05 ? '#ffd166' : '#ff7a2b';
       ctx.beginPath();
-      ctx.moveTo(cx - 7, -5);
-      ctx.lineTo(cx + 7, -5);
-      ctx.lineTo(cx + 4, 5);
-      ctx.lineTo(cx - 4, 5);
+      ctx.moveTo(cx - 2.5, 0);
+      ctx.quadraticCurveTo(cx - 3.5, -size * 0.6, cx + sway, -size);
+      ctx.quadraticCurveTo(cx + 2.5, -size * 0.5, cx + 2.5, 0);
       ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = '#6b5636';
-      ctx.fillRect(cx - 9, -8, 18, 3);
-
-      // Three tongues of flame; they lean and swell while the beam is held.
-      const flicker = time * 6;
-      const size = 10 + charge * 8;
-      for (let i = -1; i <= 1; i++) {
-        const lean = Math.sin(flicker + i * 1.7) * 2.4;
-        ctx.fillStyle = i === 0 ? '#ffd166' : '#ff7a2b';
-        ctx.beginPath();
-        ctx.moveTo(cx + i * 3 - 2, -6);
-        ctx.lineTo(cx + i * 5 + lean, -6 - size * (1 - Math.abs(i) * 0.28));
-        ctx.lineTo(cx + i * 3 + 2, -6);
-        ctx.closePath();
-        ctx.fill();
-      }
-      glow(ctx, cx, -8, 22 + charge * 14, '#ff7a2b', 0.5 + charge * 0.35);
-      // Near the lock-out the bowl glows white, which is the only warning the
+      glow(ctx, cx, -4, 18 + charge * 14, '#ff7a2b', 0.45 + charge * 0.35);
+      // Near the lock-out the tip glows white, which is the only warning the
       // player gets before the staff refuses to fire.
-      if (heat > 0.55) glow(ctx, cx, -8, 15, '#ffe14d', (heat - 0.55) * 2.2);
+      if (heat > 0.55) glow(ctx, cx, -4, 13, '#ffe14d', (heat - 0.55) * 2.2);
     },
   },
 
   ice_staff: {
     color: '#7fd8ff',
-    shaftTop: '#8fa3b8',
-    shaftBottom: '#3d4a59',
     head(ctx, time, charge) {
       const cx = 58;
-      // A cluster of shards rather than one crystal: the staff reads as
-      // splintered ice even in silhouette.
-      const spin = time * (0.5 + charge * 2.4);
-      const shards = [
-        { r: 12, sides: 4, rot: spin, color: '#d8f4ff' },
-        { r: 9, sides: 3, rot: -spin * 1.4 + 0.6, offset: -7 },
-        { r: 7, sides: 3, rot: -spin * 1.1 + 2.2, offset: 7 },
-      ];
-      for (const s of shards) {
-        ctx.fillStyle = s.color;
-        polygonPath(ctx, cx + (s.offset ?? 0) * 0.5, (s.offset ?? 0) * 0.55, s.r, s.sides, s.rot);
-        ctx.fill();
-      }
-      ctx.fillStyle = hexAlpha('#ffffff', 0.75 + charge * 0.25);
-      polygonPath(ctx, cx, 0, 4 + charge * 2, 3, spin * 1.8);
+      // One diamond, gently pulsing.
+      const r = 8 + charge * 3 + Math.sin(time * 2.2) * 0.8;
+      ctx.fillStyle = '#d8f4ff';
+      polygonPath(ctx, cx, -2, r, 4, Math.PI / 4);
       ctx.fill();
-      glow(ctx, cx, 0, 24 + charge * 12, '#7fd8ff', 0.5 + charge * 0.35);
+      glow(ctx, cx, -2, 18 + charge * 12, '#7fd8ff', 0.45 + charge * 0.35);
     },
   },
 
   lightning_staff: {
     color: '#ffe14d',
-    shaftTop: '#7b8496',
-    shaftBottom: '#2f3542',
     head(ctx, time, charge) {
       const cx = 58;
-      // A forked rod: two prongs with the charge held between them.
-      ctx.strokeStyle = '#9aa4b8';
-      ctx.lineWidth = 2.4;
-      ctx.beginPath();
-      ctx.moveTo(cx - 7, 0);
-      ctx.lineTo(cx + 7, -10);
-      ctx.moveTo(cx - 7, 0);
-      ctx.lineTo(cx + 7, 10);
-      ctx.stroke();
-
+      // One minimal bolt; the glow swells while the beam ramps.
+      const s = 1 + charge * 0.35;
       ctx.fillStyle = '#ffe14d';
       ctx.beginPath();
-      ctx.arc(cx, 0, 4.5 + charge * 3.5, 0, Math.PI * 2);
+      ctx.moveTo(cx + 2 * s, -10 * s);
+      ctx.lineTo(cx - 3 * s, 1 * s);
+      ctx.lineTo(cx, 1 * s);
+      ctx.lineTo(cx - 2 * s, 10 * s);
+      ctx.lineTo(cx + 3 * s, -1 * s);
+      ctx.lineTo(cx, -1 * s);
+      ctx.closePath();
       ctx.fill();
-
-      // Arcs crackle between the prongs only while the beam is live; the
-      // jitter is reseeded every frame, which is what makes it crackle rather
-      // than wave.
-      if (charge > 0.01) {
-        ctx.strokeStyle = hexAlpha('#fff6c0', 0.35 + charge * 0.6);
-        ctx.lineWidth = 1.2;
-        for (let i = 0; i < 3; i++) {
-          jaggedLine(ctx, cx - 7, 0, cx + 7, (i - 1) * 8, 4, 3.5, Math.random);
-        }
-      }
-      glow(ctx, cx, 0, 20 + charge * 16, '#ffe14d', 0.45 + charge * 0.4);
+      glow(ctx, cx, 0, 16 + charge * 16, '#ffe14d', 0.4 + charge * 0.4);
+      void time;
     },
   },
 
   staff_of_the_void: {
     color: '#c05cff',
-    shaftTop: '#4a3b5c',
-    shaftBottom: '#1c1424',
     head(ctx, time, charge) {
       const cx = 58;
-      const spin = time * (1.4 + charge * 3.2);
-      // A hole rather than an object: dark core, bright rim.
+      // One thin ring around a dark core: a hole, not an object.
       ctx.fillStyle = '#120a1a';
-      polygonPath(ctx, cx, 0, 9 + charge * 2.5, 6, -spin * 0.6);
+      ctx.beginPath();
+      ctx.arc(cx, 0, 4.5, 0, Math.PI * 2);
       ctx.fill();
-
-      ctx.strokeStyle = hexAlpha('#c05cff', 0.65);
+      ctx.strokeStyle = hexAlpha('#c05cff', 0.8);
       ctx.lineWidth = 1.6;
       ctx.beginPath();
-      ctx.arc(cx, 0, 13 + charge * 4, spin, spin + Math.PI * 1.4);
+      ctx.arc(cx, 0, 10 + charge * 4, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(cx, 0, 17 + charge * 4, -spin * 0.7, -spin * 0.7 + Math.PI * 0.8);
-      ctx.stroke();
-
-      glow(ctx, cx, 0, 30 + charge * 16, '#c05cff', 0.5 + charge * 0.4);
+      glow(ctx, cx, 0, 22 + charge * 14, '#c05cff', 0.45 + charge * 0.4);
+      void time;
     },
   },
 };
@@ -447,12 +390,9 @@ function drawStaff(ctx, player, time) {
   ctx.save();
   ctx.rotate(Math.sin(time * 2.4) * 0.05);
 
-  // One gradient for all four: the shaft material differs, the shape does not.
-  const shaft = ctx.createLinearGradient(0, -3, 0, 3);
-  shaft.addColorStop(0, def.shaftTop);
-  shaft.addColorStop(1, def.shaftBottom);
-  ctx.fillStyle = shaft;
-  ctx.fillRect(-10, -2.6, 62, 5.2);
+  // One flat shaft for all four: identity lives in the head mark alone.
+  ctx.fillStyle = '#262a33';
+  ctx.fillRect(-10, -2, 62, 4);
 
   def.head(ctx, time, charge, heat);
 

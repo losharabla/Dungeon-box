@@ -104,6 +104,7 @@ export class ProjectileSystem {
       stunChance: spec.stunChance,
       critChance: spec.critChance,
       parryable: spec.parryable ?? true,
+      leavesHazard: spec.leavesHazard ?? false,
     };
     this.projectiles.push(p);
     return p;
@@ -207,6 +208,7 @@ export class ProjectileSystem {
       visual: opts.visual ?? 'enemy_orbs',
       color: opts.color ?? '#c05cff',
       explosionRadius: opts.explosionRadius ?? 0,
+      leavesHazard: opts.leavesHazard ?? false,
     });
   }
 
@@ -272,9 +274,10 @@ export class ProjectileSystem {
       p.y = hitY;
 
       // --- Entity interaction ----------------------------------------------
+      const barrels = this.registry.barrels ?? [];
       const targets = p.faction === 'player'
-        ? this.registry.enemies
-        : (this.registry.player ? [this.registry.player] : []);
+        ? [...this.registry.enemies, ...barrels]
+        : (this.registry.player ? [this.registry.player, ...barrels] : barrels);
 
       let consumed = false;
       for (const t of targets) {
@@ -287,7 +290,7 @@ export class ProjectileSystem {
         // therefore tested against the drawn body. Hostile shots keep the
         // player's plain body circle, because enemies aim at the player's
         // position rather than at painted art.
-        if (p.faction === 'player') {
+        if (p.faction === 'player' || t.kind === 'barrel') {
           const volume = typeof t.getHitVolume === 'function'
             ? t.getHitVolume()
             : { x: t.x, y: t.y, radius: t.hitRadius ?? t.radius };
@@ -414,6 +417,7 @@ export class ProjectileSystem {
     if (shouldExplode) {
       this.explode(p.x, p.y, p.explosionRadius, p.damage * 0.7, p);
     }
+    this._spawnPuddle(p.x, p.y, p);
 
     // Pierce allows the shot to continue; otherwise it is consumed.
     if (p.pierce > 0) {
@@ -436,6 +440,7 @@ export class ProjectileSystem {
     if (p.explosionRadius > 0) {
       this.explode(x, y, p.explosionRadius, p.damage * 0.6, p);
     }
+    this._spawnPuddle(x, y, p);
   }
 
   /**
@@ -443,9 +448,40 @@ export class ProjectileSystem {
    */
   _onExpire(p) {
     p.alive = false;
-    // Fading magic bolts still pop at the end of their life.
-    if (p.visual === 'fire' || p.visual === 'void' || p.visual === 'enemy_orbs') {
+    if (p.visual === 'molotov' || p.leavesHazard) {
+      this._impactBurst(p, p.x, p.y);
+      if (p.explosionRadius > 0) {
+        this.explode(p.x, p.y, p.explosionRadius, p.damage * 0.6, p);
+      }
+      this._spawnPuddle(p.x, p.y, p);
+    } else if (p.visual === 'fire' || p.visual === 'void' || p.visual === 'enemy_orbs') {
       this.particles.burst('magic', p.x, p.y, 5, { speed: 80 });
+    }
+  }
+
+  /**
+   * Spawn a persistent fire puddle hazard when an incendiary shot lands.
+   * @param {number} x
+   * @param {number} y
+   * @param {Projectile} p
+   */
+  _spawnPuddle(x, y, p) {
+    if (!p.leavesHazard && p.visual !== 'molotov') return;
+    this.bus.emit(EVENTS.HAZARD_SPAWNED, {
+      kind: 'fire_puddle',
+      x,
+      y,
+      radius: 36,
+      damage: 7,
+      damagePerSecond: true,
+      life: 3.0,
+      maxLife: 3.0,
+      color: '#ff5a1a',
+      targetsEnemies: true,
+      owner: p.owner ?? null,
+    });
+    if (this.combat.decals) {
+      this.combat.decals.add(x, y, 'scorch', { size: 30 });
     }
   }
 
@@ -457,6 +493,10 @@ export class ProjectileSystem {
   _impactBurst(p, x, y) {
     const a = Math.atan2(p.vy, p.vx);
     switch (p.visual) {
+      case 'molotov':
+        this.particles.burst('spark', x, y, 10, { speed: 200 });
+        this.particles.burst('fire', x, y, 12, { speed: 170 });
+        break;
       case 'fire':
         this.particles.burst('fire', x, y, 9, { speed: 150 });
         break;

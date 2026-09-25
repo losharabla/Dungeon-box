@@ -32,6 +32,9 @@ export function drawHazards(ctx, hazards, time, render) {
       case 'fire':
         drawFireZone(ctx, h, progress, time);
         break;
+      case 'fire_puddle':
+        drawFirePuddle(ctx, h, progress, time);
+        break;
       case 'shockwave':
         drawShockwave(ctx, h, progress);
         break;
@@ -127,6 +130,66 @@ function drawFireZone(ctx, h, progress, time) {
     ctx.closePath();
     ctx.fill();
   }
+  ctx.restore();
+}
+
+/**
+ * A burning oil puddle on the ground.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {any} h
+ * @param {number} progress
+ * @param {number} time
+ */
+function drawFirePuddle(ctx, h, progress, time) {
+  const alpha = Math.max(0, 1 - progress);
+  const r = h.radius * (0.85 + Math.sin(time * 3 + h.x) * 0.08);
+
+  // Ambient flame glow
+  glow(ctx, h.x, h.y, r * 1.8, '#ff4d1a', 0.45 * alpha);
+
+  ctx.save();
+  ctx.translate(h.x, h.y);
+
+  // Irregular puddle base (dark burning tar/oil)
+  ctx.fillStyle = hexAlpha('#1c0d06', 0.8 * alpha);
+  ctx.beginPath();
+  const points = 8;
+  for (let i = 0; i < points; i++) {
+    const angle = (i / points) * Math.PI * 2;
+    const wave = Math.sin(angle * 3 + h.x * 0.1) * 3.5;
+    const pr = r + wave;
+    const px = Math.cos(angle) * pr;
+    const py = Math.sin(angle) * pr * 0.65;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  // Molten fiery core
+  ctx.fillStyle = hexAlpha('#ff5511', 0.65 * alpha);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * 0.65, r * 0.4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Flickering fire tongues rising from the puddle
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 4; i++) {
+    const angle = (i / 4) * Math.PI * 2 + time * 1.5;
+    const dist = (r * 0.35) * (0.6 + Math.sin(time * 4 + i) * 0.4);
+    const fx = Math.cos(angle) * dist;
+    const fy = Math.sin(angle) * dist * 0.6;
+    const flameH = (10 + Math.sin(time * 9 + i * 2) * 5) * alpha;
+
+    ctx.fillStyle = i % 2 === 0 ? hexAlpha('#ffaa22', 0.8 * alpha) : hexAlpha('#ff4411', 0.7 * alpha);
+    ctx.beginPath();
+    ctx.moveTo(fx - 4, fy);
+    ctx.quadraticCurveTo(fx, fy - flameH * 0.6, fx + Math.sin(time * 8 + i) * 3, fy - flameH);
+    ctx.quadraticCurveTo(fx + 2, fy - flameH * 0.5, fx + 4, fy);
+    ctx.closePath();
+    ctx.fill();
+  }
+
   ctx.restore();
 }
 

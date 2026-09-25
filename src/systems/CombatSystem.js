@@ -225,6 +225,9 @@ export class CombatSystem {
     if (!faction || faction === 'player') {
       if (this.registry.player) candidates.push(this.registry.player);
     }
+    if (this.registry.barrels?.length) {
+      candidates.push(...this.registry.barrels);
+    }
 
     for (const e of candidates) {
       if (!e.alive) continue;
@@ -492,6 +495,48 @@ export class CombatSystem {
    * @param {any} source
    */
   _handleDeath(target, source) {
+    if (target.kind === 'barrel') {
+      target.alive = false;
+      target.reapable = true;
+      this.particles.burst('spark', target.x, target.y, 16, { speed: 280, speedVariance: 0.6 });
+      this.particles.burst('smoke', target.x, target.y, 10, { speed: 120 });
+      this.particles.burst('fire', target.x, target.y, 14, { speed: 220 });
+      this.bus.emit(EVENTS.SHAKE_REQUESTED, 10);
+      if (this.decals) this.decals.add(target.x, target.y, 'scorch', { size: 40 });
+      this.bus.emit(EVENTS.ENTITY_DIED, { entity: target, source });
+
+      // Detonate AoE: lethal to enemy swarms, balanced splash to player
+      this.applyAreaHit(target.x, target.y, 92, {
+        damage: 48,
+        knockback: 280,
+        source: 'barrel',
+        burnChance: 0.75,
+        burnDuration: 3,
+        burnDamage: 6,
+      }, source, { faction: 'enemy', falloff: 0.5 });
+
+      this.applyAreaHit(target.x, target.y, 70, {
+        damage: 14,
+        knockback: 180,
+        source: 'barrel',
+      }, source, { faction: 'player', falloff: 0.5 });
+
+      // Spawn burning puddle hazard on the floor
+      this.bus.emit(EVENTS.HAZARD_SPAWNED, {
+        kind: 'fire_puddle',
+        x: target.x,
+        y: target.y,
+        radius: 38,
+        damage: 8,
+        damagePerSecond: true,
+        life: 4.0,
+        color: '#ff5a1a',
+        targetsEnemies: true,
+        owner: source ?? null,
+      });
+      return;
+    }
+
     this.particles.burst('blood', target.x, target.y, 14, { speed: 200 });
     this.particles.burst('smoke', target.x, target.y, 8, { speed: 70 });
     this.bus.emit(EVENTS.ENTITY_DIED, { entity: target, source });

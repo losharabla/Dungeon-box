@@ -575,6 +575,9 @@ export class BossController {
             // all — it kept that window open, making the player invulnerable
             // to everything else while standing in fire.
             this.combat.applyDamageOverTime(player, h.damage, dt, h.owner ?? null);
+            if (h.burnChance) {
+              this.combat.applyStatus(player, { burnChance: h.burnChance, burnDuration: 2, burnDamage: 5 }, h.owner);
+            }
           } else if (!h.damageApplied) {
             h.damageApplied = true;
             this.combat.applyHit(player, {
@@ -582,6 +585,39 @@ export class BossController {
             }, h.owner ?? null);
             this.combat.particles.burst('fire', h.x, h.y, 14, { speed: 200 });
             this.bus.emit(EVENTS.SHAKE_REQUESTED, 9);
+          }
+        }
+      }
+
+      // Hazards that damage enemies (e.g. fire puddles from barrels or molotovs).
+      if (active && h.damage > 0 && (h.targetsEnemies || h.targets === 'all')) {
+        for (const enemy of this.registry.livingEnemies()) {
+          if (enemy === h.owner) continue;
+          const d2 = (enemy.x - h.x) ** 2 + (enemy.y - h.y) ** 2;
+          const hitR = h.radius + enemy.radius;
+          if (d2 <= hitR * hitR) {
+            if (h.damagePerSecond) {
+              this.combat.applyDamageOverTime(enemy, h.damage, dt, h.owner ?? null);
+              if (h.burnChance) {
+                this.combat.applyStatus(enemy, { burnChance: h.burnChance, burnDuration: 2.5, burnDamage: 6 }, h.owner);
+              }
+            }
+          }
+        }
+
+        if (this.registry.barrels?.length) {
+          for (const b of this.registry.barrels) {
+            if (!b.alive) continue;
+            const d2 = (b.x - h.x) ** 2 + (b.y - h.y) ** 2;
+            const hitR = h.radius + b.radius;
+            if (d2 <= hitR * hitR) {
+              b.hp -= h.damage * dt;
+              b.hurtFlash = 0.15;
+              if (b.hp <= 0 && b.alive) {
+                b.alive = false;
+                this.combat._handleDeath(b, h.owner ?? null);
+              }
+            }
           }
         }
       }
@@ -618,6 +654,14 @@ export class BossController {
   }
 
   /**
+   * Add a hazard to the active list (boss attack, fire puddle, etc.).
+   * @param {Partial<Hazard> & {x: number, y: number}} spec
+   */
+  addHazard(spec) {
+    this.hazards.push(makeHazard(spec));
+  }
+
+  /**
    * Remove all hazards (room change).
    */
   clear() {
@@ -640,6 +684,8 @@ export class BossController {
  * @property {boolean} [damagePerSecond]
  * @property {boolean} [damageApplied]
  * @property {boolean} [expired]
+ * @property {boolean} [targetsEnemies]
+ * @property {string} [targets]
  * @property {(() => void)|null} [onExpire]
  * @property {any} [owner]
  */
@@ -662,6 +708,8 @@ function makeHazard(spec) {
     damagePerSecond: spec.damagePerSecond ?? false,
     damageApplied: false,
     expired: false,
+    targetsEnemies: spec.targetsEnemies ?? false,
+    targets: spec.targets ?? (spec.targetsEnemies ? 'all' : 'player'),
     onExpire: spec.onExpire ?? null,
     owner: spec.owner,
   };

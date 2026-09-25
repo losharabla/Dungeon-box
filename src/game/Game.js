@@ -206,6 +206,10 @@ export class Game {
       this.screenFlash.flash(0.4, '#ff5a3c');
     });
 
+    this.bus.on(EVENTS.HAZARD_SPAWNED, (spec) => {
+      this.bossController.addHazard(spec);
+    });
+
     this.bus.on(EVENTS.NOTICE, ({ text }) => {
       this.callbacks.onNotice(text);
     });
@@ -369,8 +373,14 @@ export class Game {
         if (enemy.deathTimer > CONFIG.room.enemyDeathDuration) enemy.reapable = true;
       }
     }
+    for (const barrel of this.registry.barrels) {
+      if (barrel.alive) barrel.update(dt);
+    }
     this.registry.reap();
-    this.movement.separate(this.registry.enemies, player, dt);
+    const solidObstacles = this.registry.barrels?.length
+      ? [...this.registry.enemies, ...this.registry.barrels]
+      : this.registry.enemies;
+    this.movement.separate(solidObstacles, player, dt);
 
     // Clamp everything inside the arena as a safety net.
     const room = this.rooms.runtime?.room;
