@@ -67,148 +67,828 @@ function drawMeleeWeapon(ctx, player, time, recoil) {
   ctx.translate(-recoil * 6 + swingOffset * 6, 0);
   if (pose.progress === null) ctx.rotate(Math.sin(time * 3.2) * 0.045);
 
-  const steelGrad = ctx.createLinearGradient(18, 0, 68, 0);
-  steelGrad.addColorStop(0, '#4f5668');
-  steelGrad.addColorStop(0.42, '#e1e5ed');
-  steelGrad.addColorStop(0.72, '#a2a9b8');
-  steelGrad.addColorStop(1, '#596071');
-
-  if (id === 'battle_axe') {
-    // Battle axe: asymmetric bearded head, leather-wrapped haft and a bright
-    // cutting edge. Its low beard and broad crescent read differently from
-    // both the narrow starter sword and the blocky hammer.
-    ctx.fillStyle = '#4a2f1d';
-    ctx.fillRect(3, -2.8, 49, 5.6);
-    ctx.strokeStyle = '#a36b3d';
-    ctx.lineWidth = 1.5;
-    for (let i = 0; i < 5; i++) {
-      ctx.beginPath();
-      ctx.moveTo(10 + i * 7, -3);
-      ctx.lineTo(13 + i * 7, 3);
-      ctx.stroke();
-    }
-    ctx.fillStyle = steelGrad;
-    ctx.beginPath();
-    ctx.moveTo(45, -3);
-    ctx.quadraticCurveTo(52, -22, 68, -18);
-    ctx.quadraticCurveTo(73, -4, 67, 5);
-    ctx.quadraticCurveTo(63, 13, 52, 10);
-    ctx.lineTo(48, 3);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = '#f5f7fb';
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.moveTo(52, -19);
-    ctx.quadraticCurveTo(64, -18, 68, -12);
-    ctx.quadraticCurveTo(71, -7, 68, -2);
-    ctx.stroke();
-    ctx.fillStyle = '#8f6a42';
-    ctx.fillRect(43, -4.5, 5, 9);
-  } else if (id === 'war_hammer') {
-    // War hammer: reinforced two-handed shaft, faceted maul head, rear spike
-    // and a warm rune. The large vertical mass is readable at a glance.
-    ctx.fillStyle = '#382417';
-    ctx.fillRect(2, -3.5, 48, 7);
-    ctx.fillStyle = '#8f6a42';
-    ctx.fillRect(12, -4, 3, 8);
-    ctx.fillRect(31, -4, 3, 8);
-    const hammerGrad = ctx.createLinearGradient(46, -16, 46, 16);
-    hammerGrad.addColorStop(0, '#b9c1ce');
-    hammerGrad.addColorStop(0.48, '#687082');
-    hammerGrad.addColorStop(1, '#343b4b');
-    ctx.fillStyle = hammerGrad;
-    ctx.beginPath();
-    ctx.moveTo(43, -15);
-    ctx.lineTo(66, -12);
-    ctx.lineTo(70, -7);
-    ctx.lineTo(70, 7);
-    ctx.lineTo(66, 12);
-    ctx.lineTo(43, 15);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#d9dee7';
-    ctx.fillRect(65, -9, 7, 18);
-    ctx.fillStyle = '#4b5364';
-    ctx.beginPath();
-    ctx.moveTo(43, -12); ctx.lineTo(34, -17); ctx.lineTo(43, -5); ctx.closePath();
-    ctx.moveTo(43, 12); ctx.lineTo(34, 17); ctx.lineTo(43, 5); ctx.closePath();
-    ctx.fill();
-    const rune = 0.65 + Math.sin(time * 5) * 0.25;
-    glow(ctx, 54, 0, 13, '#ff9c3a', rune * 0.45);
-    ctx.strokeStyle = hexAlpha('#ffd166', rune);
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(50, -4); ctx.lineTo(58, 4); ctx.moveTo(58, -4); ctx.lineTo(50, 4);
-    ctx.stroke();
-  } else if (id === 'bloodthirster') {
-    // Bloodthirster: a separate cursed greatsword silhouette, not a red sword
-    // recolour. The hooked guard, dark fuller and pulsing heart mark its tier.
-    ctx.fillStyle = '#21161b';
-    ctx.fillRect(-10, -3.2, 22, 6.4);
-    ctx.strokeStyle = '#8f3040';
-    ctx.lineWidth = 1.5;
-    for (let i = 0; i < 5; i++) {
-      ctx.beginPath();
-      ctx.moveTo(-8 + i * 4, -3);
-      ctx.lineTo(-5 + i * 4, 3);
-      ctx.stroke();
-    }
-    ctx.fillStyle = '#512633';
-    ctx.beginPath();
-    ctx.moveTo(9, -3);
-    ctx.quadraticCurveTo(13, -13, 18, -9);
-    ctx.lineTo(14, -1);
-    ctx.quadraticCurveTo(18, 9, 13, 13);
-    ctx.lineTo(9, 3);
-    ctx.closePath();
-    ctx.fill();
-    const darkSteel = ctx.createLinearGradient(16, 0, 78, 0);
-    darkSteel.addColorStop(0, '#6a3945');
-    darkSteel.addColorStop(0.35, '#322431');
-    darkSteel.addColorStop(1, '#130f19');
-    ctx.fillStyle = darkSteel;
-    ctx.beginPath();
-    ctx.moveTo(15, -6); ctx.lineTo(69, -4); ctx.lineTo(80, 0);
-    ctx.lineTo(69, 4); ctx.lineTo(15, 6); ctx.closePath();
-    ctx.fill();
-    const pulse = 0.65 + Math.sin(time * 8) * 0.25;
-    glow(ctx, 42, 0, 17, '#e5224d', pulse * 0.55);
-    ctx.fillStyle = '#9d1738';
-    ctx.beginPath();
-    ctx.moveTo(42, -5); ctx.lineTo(48, 0); ctx.lineTo(42, 6); ctx.lineTo(36, 0); ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = hexAlpha('#ff5570', pulse);
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(19, -3); ctx.quadraticCurveTo(31, 2, 42, -1);
-    ctx.quadraticCurveTo(55, -4, 72, 0);
-    ctx.moveTo(19, 3); ctx.quadraticCurveTo(31, -2, 42, 1);
-    ctx.quadraticCurveTo(55, 4, 72, 0);
-    ctx.stroke();
-  } else {
-    // Sword: disciplined knightly longsword with a strong crossguard, fuller
-    // and tapered point. The clean horizontal silhouette is the starter model.
-    ctx.fillStyle = '#432b1d';
-    ctx.fillRect(-8, -2.7, 18, 5.4);
-    ctx.fillStyle = '#9c7b42';
-    ctx.fillRect(8, -8, 5, 16);
-    ctx.fillStyle = '#d1b36a';
-    ctx.fillRect(6, -6.5, 9, 2);
-    ctx.fillRect(6, 4.5, 9, 2);
-    ctx.fillStyle = steelGrad;
-    ctx.beginPath();
-    ctx.moveTo(13, -4.8); ctx.lineTo(63, -3); ctx.lineTo(74, 0);
-    ctx.lineTo(63, 3); ctx.lineTo(13, 4.8); ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(66, 0); ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,255,255,0.38)';
-    ctx.beginPath(); ctx.moveTo(63, -3); ctx.lineTo(74, 0); ctx.lineTo(63, 3); ctx.stroke();
+  switch (id) {
+    case 'battle_axe':
+      drawBattleAxe(ctx, time);
+      break;
+    case 'war_hammer':
+      drawWarHammer(ctx, time);
+      break;
+    case 'bloodthirster':
+      drawBloodthirster(ctx, time);
+      break;
+    case 'sword':
+    default:
+      drawSword(ctx, time);
+      break;
   }
 
   ctx.restore();
+}
+
+/**
+ * Sword: knightly arming sword with polished wheel pommel, textured grip with wire binding,
+ * arched quillons with brass finials, and a double-edged tapered steel blade with central fuller.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} time
+ */
+function drawSword(ctx, time) {
+  // Wheel pommel (steel with brass center rivet)
+  ctx.fillStyle = '#3c4250';
+  ctx.beginPath();
+  ctx.arc(-10.5, 0, 4.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#7c8699';
+  ctx.lineWidth = 1.0;
+  ctx.stroke();
+
+  ctx.fillStyle = '#cca43b';
+  ctx.beginPath();
+  ctx.arc(-10.5, 0, 1.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Contoured grip (rich dark leather)
+  ctx.fillStyle = '#261510';
+  ctx.beginPath();
+  ctx.moveTo(-6.5, -2.4);
+  ctx.lineTo(6.5, -2.2);
+  ctx.lineTo(6.5, 2.2);
+  ctx.lineTo(-6.5, 2.4);
+  ctx.closePath();
+  ctx.fill();
+
+  // Silver wire grip wrap
+  ctx.strokeStyle = '#8d95a5';
+  ctx.lineWidth = 0.9;
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.moveTo(-4 + i * 2.8, -2.3);
+    ctx.lineTo(-2 + i * 2.8, 2.3);
+    ctx.stroke();
+  }
+
+  // Grip collar (brass ferrule)
+  ctx.fillStyle = '#cca43b';
+  ctx.fillRect(5.2, -2.8, 2.2, 5.6);
+
+  // Crossguard (sculpted steel with arched quillons and brass finials)
+  ctx.fillStyle = '#424856';
+  ctx.beginPath();
+  ctx.moveTo(7.4, -2.5);
+  ctx.quadraticCurveTo(8.5, -9, 7.5, -13);
+  ctx.lineTo(11, -12);
+  ctx.quadraticCurveTo(12, -7, 12, -2);
+  // Center langet / ecusson pointing down the blade
+  ctx.lineTo(14.5, 0);
+  ctx.lineTo(12, 2);
+  ctx.quadraticCurveTo(12, 7, 11, 12);
+  ctx.lineTo(7.5, 13);
+  ctx.quadraticCurveTo(8.5, 9, 7.4, 2.5);
+  ctx.closePath();
+  ctx.fill();
+
+  // Guard center ridge highlight
+  ctx.strokeStyle = '#9ca6ba';
+  ctx.lineWidth = 1.0;
+  ctx.beginPath();
+  ctx.moveTo(9, -11.5);
+  ctx.lineTo(13.5, 0);
+  ctx.lineTo(9, 11.5);
+  ctx.stroke();
+
+  // Brass finials at quillon tips
+  ctx.fillStyle = '#cca43b';
+  ctx.beginPath();
+  ctx.arc(9.2, -12.5, 1.8, 0, Math.PI * 2);
+  ctx.arc(9.2, 12.5, 1.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Blade Upper Bevel (facing ambient light)
+  const topSteel = ctx.createLinearGradient(14, 0, 75, 0);
+  topSteel.addColorStop(0, '#757e91');
+  topSteel.addColorStop(0.35, '#eef3fb');
+  topSteel.addColorStop(0.7, '#b4bece');
+  topSteel.addColorStop(1, '#d8e0ed');
+
+  ctx.fillStyle = topSteel;
+  ctx.beginPath();
+  ctx.moveTo(12.5, -4.5);
+  ctx.lineTo(60, -2.6);
+  ctx.lineTo(75, 0);
+  ctx.lineTo(14, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  // Blade Lower Bevel (in core shadow)
+  const btmSteel = ctx.createLinearGradient(14, 0, 75, 0);
+  btmSteel.addColorStop(0, '#383e4d');
+  btmSteel.addColorStop(0.4, '#768094');
+  btmSteel.addColorStop(0.8, '#4a5364');
+  btmSteel.addColorStop(1, '#667082');
+
+  ctx.fillStyle = btmSteel;
+  ctx.beginPath();
+  ctx.moveTo(14, 0);
+  ctx.lineTo(75, 0);
+  ctx.lineTo(60, 2.6);
+  ctx.lineTo(12.5, 4.5);
+  ctx.closePath();
+  ctx.fill();
+
+  // Fuller (central blood groove)
+  ctx.fillStyle = '#222631';
+  ctx.beginPath();
+  ctx.moveTo(14.5, -0.9);
+  ctx.lineTo(52, -0.6);
+  ctx.lineTo(52, 0.6);
+  ctx.lineTo(14.5, 0.9);
+  ctx.closePath();
+  ctx.fill();
+
+  // Fuller reflection highlight line
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(15, 0.5);
+  ctx.lineTo(51, 0.4);
+  ctx.stroke();
+
+  // Razor top cutting edge highlight
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+  ctx.lineWidth = 0.9;
+  ctx.beginPath();
+  ctx.moveTo(13, -4.3);
+  ctx.lineTo(60, -2.5);
+  ctx.lineTo(75, 0);
+  ctx.stroke();
+
+  // Subtle tip gleam
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+  ctx.beginPath();
+  ctx.arc(73, 0, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+  void time;
+}
+
+/**
+ * Battle Axe: heavy Nordic crescent war axe crafted for top-down / isometric view.
+ * Seasoned ash haft with leather grip wrap, steel pommel ring, and langet plates.
+ * The axe head is rendered in bold 3/4 isometric perspective:
+ * - Thick forged eye socket collar with top haft wedge and thrusting spear
+ * - Rear armor-breaking hammer poll / heavy square block
+ * - Massive sweeping crescent bearded blade (spanning y = -24 to +22)
+ * - Illuminated top spine bevel showing forged blade thickness
+ * - Wide ground cutting edge with razor-sharp tempered silver bevel
+ * - Traditional Nordic fuller slot in the blade cheek
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} time
+ */
+/**
+ * Battle Axe: legendary double-bitted crescent Greataxe designed for 2D top-down view.
+ * Seasoned ash wood haft with criss-cross leather binding, steel butt-cap and langets.
+ * At the head:
+ * - Central forged steel socket collar with brass reinforcement bands
+ * - Lethal diamond thrusting spear point extending forward along the haft axis
+ * - Two sweeping crescent blades (top & bottom) with deep concave beard cutouts
+ * - Sharp inner and outer horns on each blade
+ * - Wide ground silver-tempered bevels and gleaming white razor cutting edges
+ * - Traditional Nordic fuller grooves in the blade cheeks
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} time
+ */
+function drawBattleAxe(ctx, time) {
+  // 1. Ash wood haft with top-down isometric shading
+  const wood = ctx.createLinearGradient(0, -2.8, 0, 2.8);
+  wood.addColorStop(0, '#5a341b');
+  wood.addColorStop(0.45, '#3d2010');
+  wood.addColorStop(1, '#221108');
+  ctx.fillStyle = wood;
+  ctx.fillRect(-16, -2.5, 66, 5.0);
+
+  // 2. Steel butt-cap with forged lanyard ring
+  ctx.fillStyle = '#424856';
+  ctx.fillRect(-17.5, -3.2, 3.5, 6.4);
+  ctx.strokeStyle = '#8d98ab';
+  ctx.lineWidth = 1.0;
+  ctx.beginPath();
+  ctx.arc(-19.5, 0, 2.6, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // 3. Leather handgrip wrap with criss-cross golden-brown binding
+  ctx.fillStyle = '#1e110a';
+  ctx.fillRect(-3, -2.9, 20, 5.8);
+  ctx.strokeStyle = '#a67243';
+  ctx.lineWidth = 1.0;
+  for (let i = 0; i < 5; i++) {
+    ctx.beginPath();
+    ctx.moveTo(-1 + i * 3.8, -2.9);
+    ctx.lineTo(2 + i * 3.8, 2.9);
+    ctx.moveTo(2 + i * 3.8, -2.9);
+    ctx.lineTo(-1 + i * 3.8, 2.9);
+    ctx.stroke();
+  }
+
+  // Brass ferrule rings on grip
+  ctx.fillStyle = '#cca43b';
+  ctx.fillRect(-3.5, -3.3, 1.8, 6.6);
+  ctx.fillRect(16.5, -3.3, 1.8, 6.6);
+
+  // 4. Steel protective langet plates along the haft under the axe eye
+  ctx.fillStyle = '#495060';
+  ctx.fillRect(26, -3.0, 14, 6.0);
+  ctx.strokeStyle = '#7c8699';
+  ctx.lineWidth = 0.8;
+  ctx.strokeRect(26, -3.0, 14, 6.0);
+  // Rivet studs
+  ctx.fillStyle = '#cca43b';
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.arc(28 + i * 4.5, 0, 1.0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 5. Central Thrusting Spearhead projecting forward through the socket
+  ctx.fillStyle = '#6e7a8e';
+  ctx.beginPath();
+  ctx.moveTo(48, -2.8);
+  ctx.lineTo(68, 0);
+  ctx.lineTo(48, 2.8);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#b0bdd0';
+  ctx.beginPath();
+  ctx.moveTo(48, -2.8);
+  ctx.lineTo(68, 0);
+  ctx.lineTo(48, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = '#e6edf8';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(48, 0);
+  ctx.lineTo(68, 0);
+  ctx.stroke();
+
+  // 6. Central Forged Eye Collar
+  const collarGrad = ctx.createLinearGradient(39, -5.5, 49, 5.5);
+  collarGrad.addColorStop(0, '#566072');
+  collarGrad.addColorStop(0.5, '#39404f');
+  collarGrad.addColorStop(1, '#20242e');
+  ctx.fillStyle = collarGrad;
+  ctx.fillRect(39, -5.5, 10, 11);
+  ctx.strokeStyle = '#7c889d';
+  ctx.lineWidth = 1.0;
+  ctx.strokeRect(39, -5.5, 10, 11);
+  // Brass center wedge plate
+  ctx.fillStyle = '#cca43b';
+  ctx.fillRect(43, -3.5, 2.2, 7.0);
+
+  // ============================================================
+  // DOUBLE-BITTED CRESCENT BLADES (Top & Bottom Wings)
+  // ============================================================
+
+  // --- UPPER CRESCENT BLADE (y = -5.5 to -28) ---
+  const upperBody = ctx.createLinearGradient(24, -28, 58, -5);
+  upperBody.addColorStop(0, '#586377');
+  upperBody.addColorStop(0.4, '#383e4d');
+  upperBody.addColorStop(1, '#1e222b');
+
+  ctx.fillStyle = upperBody;
+  ctx.beginPath();
+  // Narrow socket throat base
+  ctx.moveTo(41, -5.5);
+  // Deep concave beard cutout curving back and up to rear horn at (24, -19)
+  ctx.quadraticCurveTo(34, -7, 24, -19);
+  // Wide crescent cutting edge sweep from rear horn to forward horn at (58, -19)
+  ctx.quadraticCurveTo(41, -29, 58, -19);
+  // Concave forward throat curving back to socket at (47, -5.5)
+  ctx.quadraticCurveTo(51, -8, 47, -5.5);
+  ctx.closePath();
+  ctx.fill();
+
+  // Upper blade wide silver cutting bevel
+  const upperBevel = ctx.createLinearGradient(24, -29, 58, -17);
+  upperBevel.addColorStop(0, '#ffffff');
+  upperBevel.addColorStop(0.35, '#dbe4f2');
+  upperBevel.addColorStop(0.7, '#8e9ab0');
+  upperBevel.addColorStop(1, '#566073');
+
+  ctx.fillStyle = upperBevel;
+  ctx.beginPath();
+  // Outer crescent edge
+  ctx.moveTo(24, -19);
+  ctx.quadraticCurveTo(41, -29, 58, -19);
+  // Inner bevel boundary (parallel, 5px inward)
+  ctx.quadraticCurveTo(41, -23.5, 24, -19);
+  ctx.closePath();
+  ctx.fill();
+
+  // Polished razor edge highlight
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(24, -19);
+  ctx.quadraticCurveTo(41, -29, 58, -19);
+  ctx.stroke();
+
+  // Upper blade fuller slot
+  ctx.fillStyle = '#14171f';
+  ctx.beginPath();
+  ctx.moveTo(35, -12);
+  ctx.lineTo(42, -19);
+  ctx.lineTo(46, -15);
+  ctx.lineTo(41, -9);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#5a6477';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+
+  // Gold Nordic inlay rune on blade cheek
+  ctx.strokeStyle = '#cca43b';
+  ctx.lineWidth = 0.9;
+  ctx.beginPath();
+  ctx.moveTo(42, -18); ctx.lineTo(38, -13); ctx.lineTo(44, -13);
+  ctx.stroke();
+
+  // --- LOWER CRESCENT BLADE (y = +5.5 to +28) ---
+  const lowerBody = ctx.createLinearGradient(24, 28, 58, 5);
+  lowerBody.addColorStop(0, '#444d5e');
+  lowerBody.addColorStop(0.4, '#282d38');
+  lowerBody.addColorStop(1, '#161920');
+
+  ctx.fillStyle = lowerBody;
+  ctx.beginPath();
+  // Narrow socket throat base
+  ctx.moveTo(41, 5.5);
+  // Deep concave beard cutout curving back and down to lower rear horn at (24, 19)
+  ctx.quadraticCurveTo(34, 7, 24, 19);
+  // Wide crescent cutting edge sweep from rear horn to forward horn at (58, 19)
+  ctx.quadraticCurveTo(41, 29, 58, 19);
+  // Concave forward throat curving back to socket at (47, 5.5)
+  ctx.quadraticCurveTo(51, 8, 47, 5.5);
+  ctx.closePath();
+  ctx.fill();
+
+  // Lower blade cutting bevel
+  const lowerBevel = ctx.createLinearGradient(24, 29, 58, 17);
+  lowerBevel.addColorStop(0, '#eef3fb');
+  lowerBevel.addColorStop(0.35, '#c5d1e2');
+  lowerBevel.addColorStop(0.7, '#788499');
+  lowerBevel.addColorStop(1, '#424a5a');
+
+  ctx.fillStyle = lowerBevel;
+  ctx.beginPath();
+  // Outer crescent edge
+  ctx.moveTo(24, 19);
+  ctx.quadraticCurveTo(41, 29, 58, 19);
+  // Inner bevel boundary (parallel, 5px inward)
+  ctx.quadraticCurveTo(41, 23.5, 24, 19);
+  ctx.closePath();
+  ctx.fill();
+
+  // Polished razor edge highlight
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(24, 19);
+  ctx.quadraticCurveTo(41, 29, 58, 19);
+  ctx.stroke();
+
+  // Lower blade fuller slot
+  ctx.fillStyle = '#14171f';
+  ctx.beginPath();
+  ctx.moveTo(35, 12);
+  ctx.lineTo(42, 19);
+  ctx.lineTo(46, 15);
+  ctx.lineTo(41, 9);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#5a6477';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+
+  // Gold Nordic inlay rune on blade cheek
+  ctx.strokeStyle = '#cca43b';
+  ctx.lineWidth = 0.9;
+  ctx.beginPath();
+  ctx.moveTo(42, 18); ctx.lineTo(38, 13); ctx.lineTo(44, 13);
+  ctx.stroke();
+
+  void time;
+}
+
+/**
+ * War Hammer: heavy Dwarven crushing War Maul designed for 2D top-down view.
+ * Seasoned ironwood shaft with studded leather grip, pommel spike, and langets.
+ * At the head:
+ * - Central octagonal socket collar with bronze reinforcement rings
+ * - Forward armor-piercing diamond crown spike
+ * - Rear curved raven's beak pick (bec-de-corbin)
+ * - Two faceted crushing hammer heads (top & bottom) with sculpted waists/necks
+ * - Chamfered 45-degree beveled corners on striking blocks
+ * - Heavy steel impact plates with cross-hatched waffle teeth
+ * - Glowing molten titan rune pulsing with forge heat
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} time
+ */
+function drawWarHammer(ctx, time) {
+  // 1. Heavy ironwood shaft with top-light shading
+  const wood = ctx.createLinearGradient(0, -3.0, 0, 3.0);
+  wood.addColorStop(0, '#583620');
+  wood.addColorStop(0.4, '#382012');
+  wood.addColorStop(1, '#1c0f08');
+  ctx.fillStyle = wood;
+  ctx.fillRect(-17, -2.6, 65, 5.2);
+
+  // 2. Spiked octagonal pommel counterweight
+  ctx.fillStyle = '#383e4d';
+  ctx.beginPath();
+  ctx.moveTo(-17, -4.5);
+  ctx.lineTo(-21, -3.2);
+  ctx.lineTo(-24, 0); // rear spike
+  ctx.lineTo(-21, 3.2);
+  ctx.lineTo(-17, 4.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#8590a6';
+  ctx.lineWidth = 0.9;
+  ctx.stroke();
+
+  // 3. Leather grip wrap with wire binding
+  ctx.fillStyle = '#1c100a';
+  ctx.fillRect(-4, -3.0, 20, 6.0);
+  ctx.strokeStyle = '#8a5830';
+  ctx.lineWidth = 1.0;
+  for (let i = 0; i < 5; i++) {
+    ctx.beginPath();
+    ctx.moveTo(-2 + i * 4, -3.0);
+    ctx.lineTo(1 + i * 4, 3.0);
+    ctx.stroke();
+  }
+
+  // Brass collars on grip
+  ctx.fillStyle = '#cca43b';
+  ctx.fillRect(-5, -3.4, 2.2, 6.8);
+  ctx.fillRect(15.5, -3.4, 2.2, 6.8);
+
+  // 4. Steel langet reinforcement straps
+  ctx.fillStyle = '#4c5364';
+  ctx.fillRect(22, -3.2, 15, 6.4);
+  ctx.strokeStyle = '#768299';
+  ctx.lineWidth = 0.8;
+  ctx.strokeRect(22, -3.2, 15, 6.4);
+  // Rivet studs
+  ctx.fillStyle = '#cca43b';
+  ctx.beginPath();
+  ctx.arc(25, 0, 1.1, 0, Math.PI * 2);
+  ctx.arc(33, 0, 1.1, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 5. Rear Raven's Beak (Curved armor-piercing pick)
+  ctx.fillStyle = '#383f4e';
+  ctx.beginPath();
+  ctx.moveTo(37, -4.5);
+  ctx.quadraticCurveTo(28, -7, 18, -8); // beak hook tip
+  ctx.lineTo(18, -5.5);
+  ctx.quadraticCurveTo(27, -2, 37, 3.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#9ca7bc';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(37, -4.5);
+  ctx.quadraticCurveTo(28, -7, 18, -8);
+  ctx.stroke();
+
+  // 6. Forward Diamond Crown Spike (x = 48..64)
+  ctx.fillStyle = '#6e7a8e';
+  ctx.beginPath();
+  ctx.moveTo(47, -3.0);
+  ctx.lineTo(64, 0);
+  ctx.lineTo(47, 3.0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#b0bdd2';
+  ctx.beginPath();
+  ctx.moveTo(47, -3.0);
+  ctx.lineTo(64, 0);
+  ctx.lineTo(47, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#e6edf8';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(47, 0);
+  ctx.lineTo(64, 0);
+  ctx.stroke();
+
+  // 7. Sculpted Necks (Waists between collar and crushing heads)
+  // Upper neck (y = -5.5 to -10)
+  ctx.fillStyle = '#262b36';
+  ctx.fillRect(38, -10, 8, 5);
+  ctx.strokeStyle = '#5a6477';
+  ctx.lineWidth = 0.8;
+  ctx.strokeRect(38, -10, 8, 5);
+
+  // Lower neck (y = 5.5 to 10)
+  ctx.fillStyle = '#262b36';
+  ctx.fillRect(38, 5, 8, 5);
+  ctx.strokeStyle = '#5a6477';
+  ctx.lineWidth = 0.8;
+  ctx.strokeRect(38, 5, 8, 5);
+
+  // 8. UPPER FACETED CRUSHING HEAD (y = -10 to -22)
+  const headGradTop = ctx.createLinearGradient(32, -22, 52, -10);
+  headGradTop.addColorStop(0, '#8e99ae');
+  headGradTop.addColorStop(0.5, '#5c667a');
+  headGradTop.addColorStop(1, '#3a404f');
+
+  ctx.fillStyle = headGradTop;
+  ctx.beginPath();
+  ctx.moveTo(36, -10);
+  ctx.lineTo(32, -14);
+  ctx.lineTo(32, -18);
+  ctx.lineTo(36, -22); // top impact face left
+  ctx.lineTo(48, -22); // top impact face right
+  ctx.lineTo(52, -18);
+  ctx.lineTo(52, -14);
+  ctx.lineTo(48, -10);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = '#9ca6bb';
+  ctx.lineWidth = 1.0;
+  ctx.stroke();
+
+  // Corner reinforcement brass plates on upper head
+  ctx.fillStyle = '#cca43b';
+  ctx.fillRect(33, -13.5, 2.5, 2.5);
+  ctx.fillRect(48.5, -13.5, 2.5, 2.5);
+
+  // Top impact striking plate (hardened steel waffle-pattern face plate)
+  ctx.fillStyle = '#dbe5f5';
+  ctx.fillRect(35, -23.5, 14, 2.0);
+  // Impact waffle teeth
+  ctx.fillStyle = '#3a404f';
+  for (let i = 0; i < 4; i++) {
+    ctx.fillRect(36.5 + i * 3.2, -23.5, 1.3, 2.0);
+  }
+
+  // 9. LOWER FACETED CRUSHING HEAD (y = 10 to 22)
+  const headGradBtm = ctx.createLinearGradient(32, 10, 52, 22);
+  headGradBtm.addColorStop(0, '#586275');
+  headGradBtm.addColorStop(0.5, '#383e4c');
+  headGradBtm.addColorStop(1, '#20242e');
+
+  ctx.fillStyle = headGradBtm;
+  ctx.beginPath();
+  ctx.moveTo(36, 10);
+  ctx.lineTo(32, 14);
+  ctx.lineTo(32, 18);
+  ctx.lineTo(36, 22); // bottom impact face left
+  ctx.lineTo(48, 22); // bottom impact face right
+  ctx.lineTo(52, 18);
+  ctx.lineTo(52, 14);
+  ctx.lineTo(48, 10);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = '#626d80';
+  ctx.lineWidth = 1.0;
+  ctx.stroke();
+
+  // Corner reinforcement brass plates on lower head
+  ctx.fillStyle = '#cca43b';
+  ctx.fillRect(33, 11, 2.5, 2.5);
+  ctx.fillRect(48.5, 11, 2.5, 2.5);
+
+  // Bottom impact striking plate
+  ctx.fillStyle = '#828fa3';
+  ctx.fillRect(35, 21.5, 14, 2.0);
+  // Impact waffle teeth
+  ctx.fillStyle = '#20242e';
+  for (let i = 0; i < 4; i++) {
+    ctx.fillRect(36.5 + i * 3.2, 21.5, 1.3, 2.0);
+  }
+
+  // 10. Central Octagonal Collar Body (Ступица)
+  const collarGrad = ctx.createLinearGradient(36, -5.5, 48, 5.5);
+  collarGrad.addColorStop(0, '#667084');
+  collarGrad.addColorStop(0.5, '#474f5e');
+  collarGrad.addColorStop(1, '#282d38');
+  ctx.fillStyle = collarGrad;
+  ctx.beginPath();
+  ctx.moveTo(38, -5.5);
+  ctx.lineTo(46, -5.5);
+  ctx.lineTo(48, -2.5);
+  ctx.lineTo(48, 2.5);
+  ctx.lineTo(46, 5.5);
+  ctx.lineTo(38, 5.5);
+  ctx.lineTo(36, 2.5);
+  ctx.lineTo(36, -2.5);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = '#8d98ab';
+  ctx.lineWidth = 1.0;
+  ctx.stroke();
+
+  // Corner steel rivets
+  ctx.fillStyle = '#b8c4d8';
+  ctx.beginPath();
+  ctx.arc(38, -3.5, 0.9, 0, Math.PI * 2);
+  ctx.arc(46, -3.5, 0.9, 0, Math.PI * 2);
+  ctx.arc(38, 3.5, 0.9, 0, Math.PI * 2);
+  ctx.arc(46, 3.5, 0.9, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 11. Glowing Ancient Titan/Dwarven Rune
+  const runePulse = 0.65 + Math.sin(time * 4.5) * 0.3;
+  glow(ctx, 42, 0, 14, '#ff8a1e', runePulse * 0.65);
+
+  ctx.strokeStyle = hexAlpha('#ffe570', runePulse);
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  // Titan Runic Sigil: bold diamond with inner cross
+  ctx.moveTo(42, -4);
+  ctx.lineTo(46, 0);
+  ctx.lineTo(42, 4);
+  ctx.lineTo(38, 0);
+  ctx.closePath();
+  ctx.moveTo(42, -4); ctx.lineTo(42, 4);
+  ctx.moveTo(38, 0); ctx.lineTo(46, 0);
+  ctx.stroke();
+}
+
+/**
+ * Bloodthirster: legendary demonic cursed greatsword.
+ * Spiked skull/horned pommel, barbed winged demon guard with crimson highlights,
+ * massive flamberge/serrated obsidian-damascus blade with parrying flukes,
+ * beating demonic eye in the ricasso, and glowing liquid blood veins.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} time
+ */
+function drawBloodthirster(ctx, time) {
+  const pulse = 0.65 + Math.sin(time * 6.5) * 0.3;
+
+  // Horned demonic skull pommel
+  ctx.fillStyle = '#180e15';
+  ctx.beginPath();
+  ctx.moveTo(-15, -4);
+  ctx.lineTo(-20, -6.5);
+  ctx.lineTo(-23, -2);
+  ctx.lineTo(-21, 0);
+  ctx.lineTo(-23, 2);
+  ctx.lineTo(-20, 6.5);
+  ctx.lineTo(-15, 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#852035';
+  ctx.lineWidth = 1.0;
+  ctx.stroke();
+
+  // Glowing ruby eyes in skull pommel
+  ctx.fillStyle = '#ff1a4a';
+  ctx.beginPath();
+  ctx.arc(-19, -2, 1.0, 0, Math.PI * 2);
+  ctx.arc(-19, 2, 1.0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Long two-handed grip (blackened demonic leather with wire wrap)
+  ctx.fillStyle = '#1a0d14';
+  ctx.fillRect(-15, -2.8, 23, 5.6);
+  ctx.strokeStyle = '#99223c';
+  ctx.lineWidth = 1.1;
+  for (let i = 0; i < 6; i++) {
+    ctx.beginPath();
+    ctx.moveTo(-13 + i * 3.5, -2.8);
+    ctx.lineTo(-11 + i * 3.5, 2.8);
+    ctx.stroke();
+  }
+
+  // Demonic Winged Crossguard (sharp forward-swept curved horns)
+  ctx.fillStyle = '#26111b';
+  ctx.beginPath();
+  ctx.moveTo(8, -3);
+  ctx.quadraticCurveTo(9, -12, 16, -16);
+  ctx.lineTo(13.5, -12);
+  ctx.quadraticCurveTo(11, -7, 13, -2);
+  ctx.lineTo(16, 0); // center guard crest
+  ctx.lineTo(13, 2);
+  ctx.quadraticCurveTo(11, 7, 13.5, 12);
+  ctx.lineTo(16, 16);
+  ctx.quadraticCurveTo(9, 12, 8, 3);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = hexAlpha('#ff2a55', pulse * 0.8);
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(16, -16); ctx.quadraticCurveTo(10, -8, 14, 0); ctx.quadraticCurveTo(10, 8, 16, 16);
+  ctx.stroke();
+
+  // Massive Obsidian Damascus Blade (reaches x = 94!)
+  const demonSteel = ctx.createLinearGradient(16, -6, 94, 6);
+  demonSteel.addColorStop(0, '#541c2a');
+  demonSteel.addColorStop(0.35, '#2a1420');
+  demonSteel.addColorStop(0.7, '#150910');
+  demonSteel.addColorStop(1, '#3b121e');
+
+  // Fluted ricasso with side parrying hooks (flukes)
+  ctx.fillStyle = '#2a111c';
+  ctx.beginPath();
+  ctx.moveTo(14, -4);
+  ctx.lineTo(24, -4.5);
+  ctx.lineTo(27, -8.5); // upper parrying hook
+  ctx.lineTo(28, -4.5);
+  ctx.lineTo(28, 4.5);
+  ctx.lineTo(27, 8.5); // lower parrying hook
+  ctx.lineTo(24, 4.5);
+  ctx.lineTo(14, 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#732135';
+  ctx.lineWidth = 0.9;
+  ctx.stroke();
+
+  // Serrated demon blade body
+  ctx.fillStyle = demonSteel;
+  ctx.beginPath();
+  ctx.moveTo(28, -4.8);
+  // Serrated wave 1
+  ctx.lineTo(38, -6.0); ctx.lineTo(44, -4.2);
+  // Serrated wave 2
+  ctx.lineTo(54, -5.5); ctx.lineTo(60, -3.8);
+  // Serrated wave 3
+  ctx.lineTo(70, -4.6); ctx.lineTo(76, -3.0);
+  // Taper to needle demon point
+  ctx.lineTo(84, -2.4);
+  ctx.lineTo(94, 0); // Lethal tip at x = 94
+  ctx.lineTo(84, 2.4);
+  // Serrated lower wave 3
+  ctx.lineTo(76, 3.0); ctx.lineTo(70, 4.6);
+  // Serrated lower wave 2
+  ctx.lineTo(60, 3.8); ctx.lineTo(54, 5.5);
+  // Serrated lower wave 1
+  ctx.lineTo(44, 4.2); ctx.lineTo(38, 6.0);
+  ctx.lineTo(28, 4.8);
+  ctx.closePath();
+  ctx.fill();
+
+  // Dark fuller groove with internal crimson glow
+  ctx.fillStyle = '#10070c';
+  ctx.beginPath();
+  ctx.moveTo(28, -1.2);
+  ctx.lineTo(78, -0.6);
+  ctx.lineTo(78, 0.6);
+  ctx.lineTo(28, 1.2);
+  ctx.closePath();
+  ctx.fill();
+
+  // Pulsing crimson blade aura
+  glow(ctx, 48, 0, 22, '#ff1144', pulse * 0.45);
+
+  // Beating Demonic Eye / Blood Crystal in the ricasso
+  glow(ctx, 21, 0, 14, '#ff0033', pulse * 0.7);
+  ctx.fillStyle = '#ff1144';
+  ctx.beginPath();
+  ctx.ellipse(21, 0, 4.5, 2.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Demonic slit pupil
+  ctx.fillStyle = '#080004';
+  ctx.beginPath();
+  ctx.ellipse(21, 0, 1.0, 2.4 * pulse, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Liquid blood veins branching along the fuller toward the point
+  ctx.strokeStyle = hexAlpha('#ff3866', 0.7 + pulse * 0.3);
+  ctx.lineWidth = 1.3;
+  ctx.beginPath();
+  ctx.moveTo(24, 0);
+  ctx.lineTo(40, -1);
+  ctx.lineTo(54, 0.8);
+  ctx.lineTo(68, -0.6);
+  ctx.lineTo(82, 0);
+  ctx.stroke();
+
+  // Razor cursed crimson serrated edges
+  ctx.strokeStyle = hexAlpha('#ff2852', 0.85 * pulse);
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(28, -4.8);
+  ctx.lineTo(38, -6.0); ctx.lineTo(44, -4.2);
+  ctx.lineTo(54, -5.5); ctx.lineTo(60, -3.8);
+  ctx.lineTo(70, -4.6); ctx.lineTo(76, -3.0);
+  ctx.lineTo(84, -2.4); ctx.lineTo(94, 0);
+  ctx.lineTo(84, 2.4); ctx.lineTo(76, 3.0);
+  ctx.lineTo(70, 4.6); ctx.lineTo(60, 3.8);
+  ctx.lineTo(54, 5.5); ctx.lineTo(44, 4.2);
+  ctx.lineTo(38, 6.0); ctx.lineTo(28, 4.8);
+  ctx.stroke();
 }
 
 /**

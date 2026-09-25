@@ -69,9 +69,12 @@
           <div class="bar bar-hp"><div class="bar-fill" id="hud-hp-fill"></div></div>
           <div class="hud-num" id="hud-hp-text">0 / 0</div>
         </div>
-        <div class="hud-gold">
-          <span class="coin"></span>
-          <span id="hud-gold-text">0</span>
+        <div class="hud-top-right">
+          <div class="hud-gold">
+            <span class="coin"></span>
+            <span id="hud-gold-text">0</span>
+          </div>
+          <button type="button" class="btn btn-small hud-debug-btn" data-action="open-debug" title="Weapon Arsenal (Press ` or F1)">🛠️ Weapons</button>
         </div>
       </div>
 
@@ -163,7 +166,25 @@
         <div class="settings-block" id="settings-pause"></div>
         <div class="menu-buttons">
           <button class="btn btn-primary" data-action="resume">Continue</button>
+          <button class="btn btn-secondary" data-action="open-debug">Weapons (Debug)</button>
           <button class="btn" data-action="abandon-run">Abandon Run</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Debug Weapon Arsenal -->
+    <div class="overlay" id="overlay-debug" hidden>
+      <div class="panel panel-wide debug-panel">
+        <h2 class="screen-title">Weapon Arsenal (Debug)</h2>
+        <p class="subtitle">Click any weapon to equip immediately. Press <span class="key">`</span> or <span class="key">F1</span> to toggle.</p>
+        <div class="debug-toolbar">
+          <button type="button" class="btn btn-small" id="debug-btn-heal" data-action="debug-heal">❤️ Full HP</button>
+          <button type="button" class="btn btn-small" id="debug-btn-gold" data-action="debug-gold">+500 Gold</button>
+          <button type="button" class="btn btn-small" id="debug-btn-ult" data-action="debug-ult">⚡ Max Ult</button>
+        </div>
+        <div class="debug-grid" id="debug-grid"></div>
+        <div class="menu-buttons">
+          <button class="btn btn-primary" data-action="debug-close">Resume</button>
         </div>
       </div>
     </div>

@@ -189,7 +189,7 @@ export class InputService {
    * @returns {boolean}
    */
   _shouldSwallow(code) {
-    return code === 'Space' || code.startsWith('Arrow') || code === 'Tab';
+    return code === 'Space' || code.startsWith('Arrow') || code === 'Tab' || code === 'F1';
   }
 
   /**

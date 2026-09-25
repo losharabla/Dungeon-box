@@ -26,6 +26,7 @@ import { AudioSystem } from './audio/AudioSystem.js';
 import { bindGameAudio } from './audio/audioBindings.js';
 import { createAudioControls } from './audio/audioControls.js';
 import { getBoss } from './data/bosses.js';
+import { getWeapon } from './data/weapons.js';
 import { roomTypeLabel } from './data/roomTypes.js';
 import { CONFIG } from './core/Config.js';
 
@@ -57,7 +58,7 @@ bindGameAudio({ audio, bus });
  * Which room overlay is currently showing, so the engine knows to freeze
  * the simulation while the player reads it.
  */
-let activeOverlay = /** @type {null|'shop'|'healing'|'reward'|'pause'} */ (null);
+let activeOverlay = /** @type {null|'shop'|'healing'|'reward'|'pause'|'debug'} */ (null);
 
 /** Cached reward choices awaiting the player's decision. */
 let pendingReward = /** @type {any[]} */ ([]);
@@ -123,6 +124,8 @@ const ui = new UIManager({
     closeOverlay();
   },
   selectCharacter: () => {},
+  openDebug: () => toggleDebugMenu(),
+  debugClose: () => closeOverlay(),
 }, {
   // Narrow adapter: read the mixer, change a level, mute, click. The UI never
   // sees the audio engine itself.
@@ -206,6 +209,7 @@ function closeOverlay() {
   ui.hideOverlays();
   activeOverlay = null;
   if (state.current === 'pause') state.force('playing');
+  loop.resetAccumulator();
   input.endFrame();
   // A boss victory waits for this moment: the reward overlay had to close
   // first, since it lives inside the playing screen the victory replaces.
@@ -214,9 +218,8 @@ function closeOverlay() {
 
 /** Pause / resume (design doc §22). */
 function togglePause() {
-  // ESC also backs out of a shop or an altar screen: a room whose content is
-  // optional must not require a mouse trip to its "leave" button.
-  if (activeOverlay === 'shop' || activeOverlay === 'healing') {
+  // ESC also backs out of a shop, altar, or debug screen.
+  if (activeOverlay === 'shop' || activeOverlay === 'healing' || activeOverlay === 'debug') {
     closeOverlay();
     return;
   }
@@ -236,6 +239,68 @@ function resumeFromPause() {
   state.force('playing');
   // Drop any time accumulated while paused so nothing "jumps".
   loop.resetAccumulator();
+}
+
+/** Toggle the debug weapon arsenal overlay. */
+function toggleDebugMenu() {
+  if (activeOverlay === 'debug') {
+    closeOverlay();
+    return;
+  }
+  if (!state.isAny(['playing', 'boss', 'pause']) || !game.getPlayer()) return;
+  openDebugMenu();
+}
+
+/** Open the debug weapon arsenal overlay. */
+function openDebugMenu() {
+  const player = game.getPlayer();
+  if (!player) return;
+
+  if (activeOverlay === 'pause') {
+    ui.setOverlay('pause', false);
+  }
+  if (state.current === 'playing' || state.current === 'boss') {
+    state.force('pause');
+  }
+  activeOverlay = 'debug';
+
+  const onSelectWeapon = (weaponId) => {
+    const p = game.getPlayer();
+    if (!p) return;
+    const w = getWeapon(weaponId);
+    p.equip(w);
+    showNotice(`Equipped: ${w.name}`);
+    ui.updateHud(p, game.run, game.rooms);
+    ui.openDebugMenu(p, onSelectWeapon);
+  };
+
+  ui.openDebugMenu(player, onSelectWeapon, {
+    onHeal: () => {
+      const p = game.getPlayer();
+      if (!p) return;
+      p.hp = p.maxHp;
+      showNotice('Health fully restored');
+      ui.updateHud(p, game.run, game.rooms);
+      ui.openDebugMenu(p, onSelectWeapon);
+    },
+    onAddGold: (amount = 500) => {
+      const p = game.getPlayer();
+      if (!p) return;
+      p.addGold(amount);
+      showNotice(`+${amount} Gold`);
+      ui.updateHud(p, game.run, game.rooms);
+      ui.openDebugMenu(p, onSelectWeapon);
+    },
+    onMaxUlt: () => {
+      const p = game.getPlayer();
+      if (!p) return;
+      p.ultCharge = 100;
+      showNotice('Ultimate fully charged');
+      ui.updateHud(p, game.run, game.rooms);
+      ui.openDebugMenu(p, onSelectWeapon);
+    },
+  });
+  ui.setOverlay('debug', true);
 }
 
 /** Show a short notice in the HUD. */
@@ -361,6 +426,14 @@ function updateParticleQuality(frameDelta) {
  * @param {number} dt
  */
 function fixedUpdate(dt) {
+  // Global hotkeys (ESC, Backquote / ~, F1) can be pressed during gameplay or while paused / in overlay:
+  if (input.wasPressed('Escape')) {
+    togglePause();
+  }
+  if (input.wasPressed('Backquote') || input.wasPressed('F1')) {
+    toggleDebugMenu();
+  }
+
   // Gameplay freezes while an overlay or the menu is showing, but the
   // animation clock below keeps running so the UI stays alive.
   const frozen = activeOverlay !== null
@@ -392,9 +465,6 @@ function fixedUpdate(dt) {
 
   // --- Travel through doors automatically once cleared ------------------
   autoTravelIfAtDoor();
-
-  // --- Pause ------------------------------------------------------------
-  if (input.wasPressed('Escape')) togglePause();
 
   input.endFrame();
 }
@@ -627,5 +697,14 @@ Object.assign(window, {
     game, bus, state, render, ui, loop, audio,
     interact: () => handleInteraction(game.interact()),
     togglePause,
+    toggleDebugMenu,
+    openDebugMenu,
+    equipWeapon: (id) => {
+      const p = game.getPlayer();
+      if (p) {
+        p.equip(getWeapon(id));
+        ui.updateHud(p, game.run, game.rooms);
+      }
+    },
   },
 });

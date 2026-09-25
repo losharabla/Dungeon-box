@@ -33,6 +33,8 @@ import { NULL_AUDIO_CONTROLS, UI_BACK, UI_CLICK } from '../audio/audioControls.j
  * @property {(item: any) => void} buy
  * @property {(choice: any) => void} pickReward
  * @property {(classId: string, ultId: string) => void} selectCharacter
+ * @property {() => void} [openDebug]
+ * @property {() => void} [debugClose]
  */
 
 /** Mixer rows, in the order they appear in both menus. */
@@ -89,6 +91,8 @@ export class UIManager {
       reward: must('overlay-reward'),
       rewardGrid: must('reward-grid'),
       pause: must('overlay-pause'),
+      debug: must('overlay-debug'),
+      debugGrid: must('debug-grid'),
       transition: must('overlay-transition'),
       transitionText: must('transition-text'),
       statsGameOver: must('stats-gameover'),
@@ -144,7 +148,7 @@ export class UIManager {
 
   /**
    * Show or hide one of the in-game overlays.
-   * @param {'shop'|'healing'|'reward'|'pause'|'transition'} name
+   * @param {'shop'|'healing'|'reward'|'pause'|'transition'|'debug'} name
    * @param {boolean} visible
    */
   setOverlay(name, visible) {
@@ -166,6 +170,7 @@ export class UIManager {
     this.setOverlay('reward', false);
     this.setOverlay('pause', false);
     this.setOverlay('transition', false);
+    this.setOverlay('debug', false);
   }
 
   /**
@@ -726,6 +731,108 @@ export class UIManager {
   }
 
   /**
+   * Populate and display the weapon debug selection overlay.
+   * @param {import('../entities/Player.js').Player} player
+   * @param {(weaponId: string) => void} [onSelect]
+   * @param {{onHeal?: () => void, onAddGold?: (amount?: number) => void, onMaxUlt?: () => void}} [actions]
+   */
+  openDebugMenu(player, onSelect, actions) {
+    if (onSelect) this._debugOnSelect = onSelect;
+    if (actions) this._debugActions = actions;
+    const currentWeaponId = player?.weaponId ?? player?.weapon?.id;
+    this.el.debugGrid.innerHTML = '';
+
+    const categories = [
+      { id: 'melee', title: 'Warrior / Melee', icon: '⚔️', weapons: ['sword', 'battle_axe', 'war_hammer', 'bloodthirster'] },
+      { id: 'magic', title: 'Mage / Staves', icon: '🔮', weapons: ['fire_staff', 'ice_staff', 'lightning_staff', 'staff_of_the_void'] },
+      { id: 'gun', title: 'Gunner / Firearms', icon: '🔫', weapons: ['pistol', 'shotgun', 'assault_rifle', 'sniper_rifle', 'hellstorm'] },
+    ];
+
+    for (const cat of categories) {
+      const section = document.createElement('div');
+      section.className = 'debug-category';
+
+      const heading = document.createElement('div');
+      heading.className = 'debug-cat-header';
+      heading.innerHTML = `<span>${cat.icon}</span> ${cat.title}`;
+      section.appendChild(heading);
+
+      const list = document.createElement('div');
+      list.className = 'debug-cat-list';
+
+      for (const wId of cat.weapons) {
+        const def = WEAPONS[wId];
+        if (!def) continue;
+
+        const isEquipped = wId === currentWeaponId;
+        const card = document.createElement('div');
+        card.className = `debug-item${def.legendary ? ' legendary' : ''}${isEquipped ? ' is-equipped' : ''}`;
+        card.dataset.weaponId = wId;
+
+        const head = document.createElement('div');
+        head.className = 'debug-item-head';
+
+        const name = document.createElement('div');
+        name.className = `debug-item-name${def.legendary ? ' legendary' : ''}`;
+        name.textContent = def.name;
+        if (def.legendary) {
+          const badge = document.createElement('span');
+          badge.className = 'badge-legendary';
+          badge.textContent = '★ Legendary';
+          name.appendChild(badge);
+        }
+        head.appendChild(name);
+
+        if (isEquipped) {
+          const badge = document.createElement('span');
+          badge.className = 'debug-badge-equipped';
+          badge.textContent = '✓ In Hand';
+          head.appendChild(badge);
+        }
+
+        card.appendChild(head);
+
+        const stats = document.createElement('div');
+        stats.className = 'debug-item-stats';
+        stats.textContent = weaponStatLine(def, player);
+        card.appendChild(stats);
+
+        const desc = document.createElement('div');
+        desc.className = 'debug-item-desc';
+        desc.textContent = def.desc;
+        card.appendChild(desc);
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `btn btn-small debug-btn-equip${isEquipped ? ' btn-equipped' : ' btn-primary'}`;
+        btn.textContent = isEquipped ? 'Equipped' : 'Equip';
+        btn.disabled = isEquipped;
+
+        const equipAction = () => {
+          if (this._debugOnSelect) {
+            this.playUiSound(UI_CLICK);
+            this._debugOnSelect(wId);
+          }
+        };
+
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation?.();
+          equipAction();
+        });
+        card.addEventListener('click', () => {
+          if (!isEquipped) equipAction();
+        });
+
+        card.appendChild(btn);
+        list.appendChild(card);
+      }
+
+      section.appendChild(list);
+      this.el.debugGrid.appendChild(section);
+    }
+  }
+
+  /**
    * End-of-run statistics (design doc §"Game Over").
    * @param {HTMLElement} target
    * @param {import('../entities/Player.js').Player} player
@@ -830,6 +937,11 @@ export class UIManager {
         case 'shop-leave': this.intents.shopLeave(); break;
         case 'healing-leave': this.intents.healingLeave(); break;
         case 'reward-take': this.intents.rewardTake(); break;
+        case 'open-debug': this.intents.openDebug?.(); break;
+        case 'debug-close': this.intents.debugClose?.(); break;
+        case 'debug-heal': this._debugActions?.onHeal?.(); break;
+        case 'debug-gold': this._debugActions?.onAddGold?.(); break;
+        case 'debug-ult': this._debugActions?.onMaxUlt?.(); break;
         default: break;
       }
     });

@@ -753,6 +753,72 @@ await check('a used shop reopens, and ESC backs out of its screen', async () => 
   handle.togglePause();
 });
 
+await check('debug menu renders all 13 weapons and allows equipping', async () => {
+  const { UIManager } = await import('../src/ui/UIManager.js');
+  const { Player } = await import('../src/entities/Player.js');
+  const { WEAPONS, getWeapon } = await import('../src/data/weapons.js');
+
+  const ui = new UIManager({
+    startRun() {}, restart() {}, nextFloor() {}, resume() {}, abandonRun() {},
+    shopLeave() {}, healingLeave() {}, rewardTake() {}, buy() {}, pickReward() {},
+    selectCharacter() {},
+  });
+
+  const player = new Player({ classId: 'warrior', x: 0, y: 0, ultimateId: 'whirlwind' });
+  let selectedId = null;
+
+  ui.openDebugMenu(player, (id) => {
+    selectedId = id;
+    player.equip(getWeapon(id));
+    ui.openDebugMenu(player);
+  });
+
+  const categories = ui.el.debugGrid.querySelectorAll('.debug-category');
+  assert.equal(categories.length, 3, 'three weapon categories must be built');
+
+  const cards = ui.el.debugGrid.querySelectorAll('.debug-item');
+  assert.equal(cards.length, Object.keys(WEAPONS).length, 'all 13 weapons must be rendered');
+
+  // Currently equipped weapon (sword) has is-equipped class
+  const swordCard = [...cards].find((c) => c.querySelector('.debug-item-name')?.textContent?.includes('Sword'));
+  assert.ok(swordCard.classList.contains('is-equipped'), 'current weapon must be marked as equipped');
+
+  // Bloodthirster card exists and has legendary class
+  const bloodCard = [...cards].find((c) => c.querySelector('.debug-item-name')?.textContent?.includes('Bloodthirster'));
+  assert.ok(bloodCard.classList.contains('legendary'), 'Bloodthirster must be marked legendary');
+
+  // Click Hellstorm to equip
+  const hellstormCard = [...cards].find((c) => c.querySelector('.debug-item-name')?.textContent?.includes('Hellstorm'));
+  hellstormCard.dispatch('click');
+  assert.equal(selectedId, 'hellstorm', 'clicking card must invoke onSelect with weapon id');
+  assert.equal(player.weaponId, 'hellstorm');
+  assert.equal(player.weapon.name, 'Hellstorm');
+});
+
+await check('debug menu can be toggled via handle and ESC backs out', async () => {
+  const handle = /** @type {any} */ (globalThis.window).__roguelike;
+  assert.ok(handle?.toggleDebugMenu && handle?.equipWeapon, 'debug menu handle must exist');
+  const { game, ui, state } = handle;
+
+  game.startRun('mage', 'meteor', 42);
+  state.force('playing');
+
+  // Open debug menu
+  handle.toggleDebugMenu();
+  assert.equal(ui.el.debug.hidden, false, 'toggleDebugMenu must show debug overlay');
+  assert.equal(state.current, 'pause', 'debug menu must pause the simulation');
+
+  // Equip staff of the void
+  handle.equipWeapon('staff_of_the_void');
+  assert.equal(game.getPlayer().weaponId, 'staff_of_the_void');
+  assert.equal(ui.el.weaponName.textContent, 'Staff of the Void');
+
+  // ESC backs out of debug menu and unpauses
+  handle.togglePause();
+  assert.equal(ui.el.debug.hidden, true, 'ESC must close debug overlay');
+  assert.equal(state.current, 'playing', 'closing debug menu resumes playing state');
+});
+
 /* ---------- Report ---------------------------------------------------- */
 let failures = 0;
 for (const r of results) {
