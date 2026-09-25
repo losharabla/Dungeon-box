@@ -218,6 +218,13 @@ export class Entity {
     return { x: this.x, y: this.y, radius: this.hitRadius };
   }
 
+  /** Instantly kill and mark as reapable. */
+  kill() {
+    this.hp = 0;
+    this.alive = false;
+    this.reapable = true;
+  }
+
   /** Detach from the world. Subclasses may override for extra cleanup. */
   destroy() {
     this.alive = false;

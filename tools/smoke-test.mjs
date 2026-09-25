@@ -1020,6 +1020,7 @@ async function beamRig(weaponId) {
   }
   game.rooms.runtime.cleared = true;
   for (const e of game.registry.enemies) e.kill();
+  for (const b of game.registry.barrels) b.kill();
   game.registry.reap();
 
   player.x = 260;

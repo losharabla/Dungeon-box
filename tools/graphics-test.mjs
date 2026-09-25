@@ -547,6 +547,38 @@ check('the four player melee weapons have distinct readable silhouettes', () => 
   assert.equal(new Set(signatures).size, models.length, 'melee weapon models must not share one silhouette');
 });
 
+check('the five player gun models have distinct readable silhouettes', () => {
+  const game = newGame();
+  game.startRun('gunner', 'bullet_storm', 19);
+  const player = game.getPlayer();
+  const models = ['pistol', 'shotgun', 'assault_rifle', 'sniper_rifle', 'hellstorm'];
+  const signatures = models.map((id) => {
+    player.equip({ id, kind: 'gun', range: 500 });
+    const ctx = makeRecordingContext();
+    drawPlayerWeapon(/** @type {any} */ (ctx), player, 1.25);
+    return ctx.ops
+      .map((op) => `${op.kind}:${op.args.join(',')}:${op.fill}`)
+      .join('|');
+  });
+  assert.equal(new Set(signatures).size, models.length, 'gun models must not share one silhouette');
+});
+
+check('the four player staff models have distinct readable silhouettes', () => {
+  const game = newGame();
+  game.startRun('mage', 'meteor', 19);
+  const player = game.getPlayer();
+  const models = ['fire_staff', 'ice_staff', 'lightning_staff', 'staff_of_the_void'];
+  const signatures = models.map((id) => {
+    player.equip({ id, kind: 'magic', range: 600 });
+    const ctx = makeRecordingContext();
+    drawPlayerWeapon(/** @type {any} */ (ctx), player, 1.25);
+    return ctx.ops
+      .map((op) => `${op.kind}:${op.args.join(',')}:${op.fill}`)
+      .join('|');
+  });
+  assert.equal(new Set(signatures).size, models.length, 'staff models must not share one silhouette');
+});
+
 /**
  * A room whose four sides each carry an open door, plus the two cases that
  * must never be marked: a doorway with nothing beyond it, and a sealed one.

@@ -235,21 +235,67 @@ export class RoomController {
   }
 
   /**
-   * Spawn a few explosive barrels at tactical positions in an arena.
+   * Spawn a random number (2 to 4) of explosive barrels at random tactical positions in an arena.
    * Placed safely away from doors and the player's entry position.
-   * Uses independent coordinates so the global Spawner rng stream stays intact.
+   * Uses Math.random() so the global Spawner rng stream stays intact and deterministic.
    * @param {Room} room
    */
   _spawnBarrels(room) {
     const b = room.bounds;
-    const cx = b.x + b.w / 2;
-    const cy = b.y + b.h / 2;
-    const dx = b.w * 0.32;
-    const dy = b.h * 0.30;
-    this.registry.addBarrel(new Barrel({ x: cx - dx, y: cy - dy }));
-    this.registry.addBarrel(new Barrel({ x: cx + dx, y: cy - dy }));
-    this.registry.addBarrel(new Barrel({ x: cx - dx, y: cy + dy }));
-    this.registry.addBarrel(new Barrel({ x: cx + dx, y: cy + dy }));
+    // Random count of barrels between 2 and 4 inclusive
+    const count = 2 + Math.floor(Math.random() * 3);
+
+    const marginX = 80;
+    const marginY = 70;
+    const minSeparation = 110;
+    const minEntryDist = 130;
+
+    const entryX = room.entry?.x ?? (b.x + b.w / 2);
+    const entryY = room.entry?.y ?? (b.y + b.h - 30);
+
+    const placed = [];
+    const maxAttempts = 60;
+
+    for (let i = 0; i < count; i++) {
+      let bestPos = null;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const x = b.x + marginX + Math.random() * (b.w - marginX * 2);
+        const y = b.y + marginY + Math.random() * (b.h - marginY * 2);
+
+        // Keep distance from room entrance
+        if (Math.hypot(x - entryX, y - entryY) < minEntryDist) continue;
+
+        // Keep distance from any door
+        let tooCloseToDoor = false;
+        for (const door of room.doors) {
+          const dx = (door.rect.x + door.rect.w / 2) - x;
+          const dy = (door.rect.y + door.rect.h / 2) - y;
+          if (Math.hypot(dx, dy) < 90) {
+            tooCloseToDoor = true;
+            break;
+          }
+        }
+        if (tooCloseToDoor) continue;
+
+        // Keep distance from already placed barrels
+        let tooCloseToOther = false;
+        for (const p of placed) {
+          if (Math.hypot(x - p.x, y - p.y) < minSeparation) {
+            tooCloseToOther = true;
+            break;
+          }
+        }
+        if (tooCloseToOther) continue;
+
+        bestPos = { x, y };
+        break;
+      }
+
+      if (bestPos) {
+        placed.push(bestPos);
+        this.registry.addBarrel(new Barrel(bestPos));
+      }
+    }
   }
 
   /**
